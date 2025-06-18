@@ -1,0 +1,7 @@
+/chroma_db
+/data
+/commission_env
+/__pycache__
+__pycache__/
+/.env
+config/.env

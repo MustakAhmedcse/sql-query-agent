@@ -1,0 +1,289 @@
+"""
+Main Application - সব components একসাথে integrate করি
+Simple interface for easy use
+"""
+import os
+import sys
+import json
+import logging
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Add src directory to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class CommissionAIAssistant:
+    """Main Commission AI Assistant class"""
+    
+    def __init__(self):
+        self.data_processor = None
+        self.embedding_manager = None
+        self.rag_system = None
+        self.sql_generator = None
+        self.is_initialized = False
+        
+    def initialize_system(self, jsonl_file_path=None):
+        """
+        Complete system initialize করি
+        """
+        try:
+            print("🚀 Initializing Commission AI Assistant...")
+            
+            # Step 1: Data Processing
+            if jsonl_file_path:
+                print("\n1️⃣ Processing training data...")
+                from data_processor import process_your_data
+                processed_data = process_your_data(jsonl_file_path)
+                
+                if not processed_data:
+                    raise Exception("Data processing failed")
+                    
+                print("✅ Data processing completed!")
+            else:
+                print("⚠️  No training data provided, using existing processed data")
+              # Step 2: Setup Embeddings
+            print("\n2️⃣ Setting up embeddings...")
+            from embedding_manager import setup_embeddings_from_processed_data
+            
+            # Use absolute path to handle different working directories
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            processed_file = os.path.join(script_dir, "data", "training_data", "processed_training_data.json")
+            
+            if os.path.exists(processed_file):
+                self.embedding_manager = setup_embeddings_from_processed_data(processed_file)
+                if not self.embedding_manager:
+                    raise Exception("Embedding setup failed")
+                print("✅ Embeddings setup completed!")
+            else:
+                raise Exception(f"Processed data file not found: {processed_file}")
+            
+            # Step 3: Initialize RAG System
+            print("\n3️⃣ Initializing RAG system...")
+            from rag_system import RAGSystem
+            self.rag_system = RAGSystem(self.embedding_manager)
+            print("✅ RAG system initialized!")
+              # Step 4: Initialize SQL Generator
+            print("\n4️⃣ Initializing SQL generator...")
+            from sql_generator import SQLGenerator
+            
+            # Check for OpenAI API key
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if openai_api_key:
+                print("   Using OpenAI for SQL generation...")
+                self.sql_generator = SQLGenerator(ai_provider="openai", api_key=openai_api_key)
+            else:
+                print("   No OpenAI API key found, using template-based generation...")
+                self.sql_generator = SQLGenerator(ai_provider="template")
+                
+            print("✅ SQL generator initialized!")
+            
+            self.is_initialized = True
+            print("\n🎉 Commission AI Assistant is ready to use!")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Initialization failed: {str(e)}")
+            print(f"❌ Initialization failed: {str(e)}")
+            return False
+    
+    def generate_sql_for_srf(self, srf_text, supporting_info=""):
+        """
+        SRF text থেকে SQL query generate করি
+        """
+        if not self.is_initialized:
+            return {
+                'success': False,
+                'error': 'System not initialized. Please run initialize_system() first.'
+            }
+        
+        try:
+            print(f"\n🔍 Processing SRF request...")
+            print(f"SRF length: {len(srf_text)} characters")
+            
+            # Step 1: Retrieve similar examples
+            print("1️⃣ Finding similar examples...")
+            context = self.rag_system.retrieve_context(srf_text)
+            
+            quality_analysis = self.rag_system.analyze_retrieval_quality(context)
+            print(f"   Quality: {quality_analysis['quality']}")
+            print(f"   Similar examples found: {context.get('total_similar_found', 0)}")
+            
+            # Step 2: Format context
+            print("2️⃣ Preparing context for AI...")
+            formatted_context = self.rag_system.format_context_for_llm(context)
+            
+            if supporting_info:
+                formatted_context += f"\n\nSUPPORTING INFORMATION:\n{supporting_info}\n"
+            
+            # Step 3: Generate SQL
+            print("3️⃣ Generating SQL query...")
+            generation_result = self.sql_generator.generate_sql_query(formatted_context)
+            
+            if not generation_result['success']:
+                return {
+                    'success': False,
+                    'error': generation_result.get('error'),
+                    'context_quality': quality_analysis
+                }
+            
+            # Step 4: Validate
+            print("4️⃣ Validating generated SQL...")
+            sql_query = generation_result['sql_query']
+            validation = self.sql_generator.validate_generated_sql(sql_query)
+            
+            print("✅ SQL generation completed!")
+            
+            return {
+                'success': True,
+                'generated_sql': sql_query,
+                'validation': validation,
+                'context_quality': quality_analysis,
+                'similar_examples_count': context.get('total_similar_found', 0),
+                'high_confidence_count': context.get('high_confidence_count', 0)
+            }
+            
+        except Exception as e:
+            logger.error(f"SQL generation error: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def get_system_status(self):
+        """
+        System status check করি
+        """
+        status = {
+            'initialized': self.is_initialized,
+            'components': {}
+        }
+        
+        if self.embedding_manager:
+            try:
+                embedding_info = self.embedding_manager.get_collection_info()
+                status['components']['embeddings'] = {
+                    'status': 'ready',
+                    'total_embeddings': embedding_info.get('total_embeddings', 0)
+                }
+            except:
+                status['components']['embeddings'] = {'status': 'error'}
+        
+        if self.sql_generator:
+            status['components']['sql_generator'] = {'status': 'ready'}
+        
+        if self.rag_system:
+            status['components']['rag_system'] = {'status': 'ready'}
+        
+        return status
+
+# Simple CLI interface
+def run_cli_interface():
+    """
+    Simple command line interface
+    """
+    print("=" * 60)
+    print("🤖 Commission AI Assistant - CLI Interface")
+    print("=" * 60)
+    
+    assistant = CommissionAIAssistant()
+    
+    # Initialize system
+    jsonl_path = input("\n📁 Enter path to your JSONL training data (or press Enter to skip): ").strip()
+    if not jsonl_path:
+        jsonl_path = None
+    
+    if not assistant.initialize_system(jsonl_path):
+        print("❌ System initialization failed!")
+        return
+    
+    # Main loop
+    while True:
+        print("\n" + "="*50)
+        print("🎯 Choose an option:")
+        print("1. Generate SQL from SRF")
+        print("2. System Status")
+        print("3. Exit")
+        
+        choice = input("\nEnter your choice (1-3): ").strip()
+        
+        if choice == '1':
+            print("\n📝 Enter your SRF content:")
+            srf_text = input().strip()
+            
+            if not srf_text:
+                print("❌ Empty SRF text!")
+                continue
+            
+            supporting_info = input("\n📋 Enter supporting information (optional): ").strip()
+            
+            # Generate SQL
+            result = assistant.generate_sql_for_srf(srf_text, supporting_info)
+            
+            print("\n" + "="*50)
+            print("📊 RESULTS:")
+            print("="*50)
+            
+            if result['success']:
+                print("✅ SUCCESS!")
+                print(f"\n🔍 Context Quality: {result['context_quality']['quality']}")
+                print(f"📈 Similar Examples: {result['similar_examples_count']}")
+                print(f"🎯 High Confidence: {result['high_confidence_count']}")
+                
+                print(f"\n💾 GENERATED SQL:")
+                print("-" * 40)
+                print(result['generated_sql'])
+                print("-" * 40)
+                
+                validation = result['validation']
+                if validation['is_valid']:
+                    print("✅ Validation: PASSED")
+                else:
+                    print("⚠️  Validation Issues:")
+                    for issue in validation['issues']:
+                        print(f"   - {issue}")
+                
+                if validation['suggestions']:
+                    print("💡 Suggestions:")
+                    for suggestion in validation['suggestions']:
+                        print(f"   - {suggestion}")
+            else:
+                print(f"❌ FAILED: {result['error']}")
+        
+        elif choice == '2':
+            status = assistant.get_system_status()
+            print("\n📊 System Status:")
+            print(f"  Initialized: {'✅' if status['initialized'] else '❌'}")
+            
+            for component, info in status['components'].items():
+                status_icon = '✅' if info['status'] == 'ready' else '❌'
+                print(f"  {component}: {status_icon} {info['status']}")
+                
+                if 'total_embeddings' in info:
+                    print(f"    Embeddings: {info['total_embeddings']}")
+        
+        elif choice == '3':
+            print("\n👋 Thank you for using Commission AI Assistant!")
+            break
+        
+        else:
+            print("❌ Invalid choice! Please enter 1, 2, or 3.")
+
+# Direct run করার জন্য
+if __name__ == "__main__":
+    try:
+        run_cli_interface()
+    except KeyboardInterrupt:
+        print("\n\n👋 Goodbye!")
+    except Exception as e:
+        print(f"\n❌ Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")

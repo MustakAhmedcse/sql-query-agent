@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commission AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .status-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .status-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .input-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .result-title {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .result-success {
+            color: #155724;
+        }
+        
+        .result-error {
+            color: #721c24;
+        }
+        
+        .result-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .sql-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .validation-panel {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .validation-valid {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .validation-issues {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .validation-item {
+            margin-bottom: 5px;
+        }
+        
+        .validation-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .sql-container {
+            position: relative;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .result-stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Commission AI Assistant</h1>
+            <p>AI-powered SQL generation for MyBL Commission reports</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- System Status -->
+            <div class="status-panel">
+                <h3>📊 System Status</h3>
+                <div id="systemStatus">
+                    <div class="status-item">
+                        <span>System Status:</span>
+                        <span class="status-badge status-ready" id="systemStatusBadge">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Embeddings:</span>
+                        <span class="status-badge status-ready" id="embeddingsStatusBadge">Loading...</span>
+                    </div>
+                    <div class="status-item">
+                        <span>AI Model:</span>
+                        <span class="status-badge status-ready" id="aiModelStatusBadge">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input Section -->
+            <div class="input-section">
+                <h3>📝 Generate SQL Query</h3>
+                
+                <div class="input-group">
+                    <label for="srfText">SRF Content *</label>
+                    <textarea 
+                        id="srfText" 
+                        rows="8" 
+                        placeholder="Enter your SRF (Sales Report Format) content here...&#10;&#10;Example:&#10;Commission Calculation Report for MyBL Campaign&#10;Period: 1st to 15th April 2025&#10;Commission Type: Hourly Commission&#10;Rate: 2% of revenue&#10;Target: Active MSISDN with data usage"
+                        required></textarea>
+                </div>
+                
+                <div class="input-group">
+                    <label for="supportingInfo">Supporting Information (Optional)</label>
+                    <textarea 
+                        id="supportingInfo" 
+                        rows="4" 
+                        placeholder="Enter any additional supporting information like table structures, specific requirements, etc."></textarea>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button class="btn btn-primary" onclick="generateSQL()">
+                        🚀 Generate SQL Query
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearForm()" style="margin-left: 10px;">
+                        🗑️ Clear
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Loading -->
+            <div class="loading" id="loadingSection">
+                <div class="loading-spinner"></div>
+                <p>🤖 AI is generating your SQL query...</p>
+                <p style="font-size: 0.9em; color: #666;">This may take a few moments</p>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="result-section" id="resultSection">
+                <div class="result-header">
+                    <h3 class="result-title" id="resultTitle">📊 Generation Results</h3>
+                </div>
+                
+                <div class="result-stats" id="resultStats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="contextQuality">-</div>
+                        <div class="stat-label">Context Quality</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="similarExamples">-</div>
+                        <div class="stat-label">Similar Examples</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="confidenceCount">-</div>
+                        <div class="stat-label">High Confidence</div>
+                    </div>
+                </div>
+                
+                <div class="sql-container">
+                    <button class="copy-btn" onclick="copySQLToClipboard()">📋 Copy</button>
+                    <div class="sql-output" id="sqlOutput"></div>
+                </div>
+                
+                <div class="validation-panel" id="validationPanel">
+                    <h4>🔍 Validation Results</h4>
+                    <div id="validationContent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load system status on page load
+        window.onload = function() {
+            checkSystemStatus();
+        };
+        
+        // Check system status
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const status = await response.json();
+                
+                updateStatusUI(status);
+            } catch (error) {
+                console.error('Error checking status:', error);
+                updateStatusUI({ status: 'error', message: 'Connection failed' });
+            }
+        }
+        
+        // Update status UI
+        function updateStatusUI(status) {
+            const systemBadge = document.getElementById('systemStatusBadge');
+            const embeddingsBadge = document.getElementById('embeddingsStatusBadge');
+            const aiModelBadge = document.getElementById('aiModelStatusBadge');
+            
+            if (status.initialized) {
+                systemBadge.textContent = 'Ready';
+                systemBadge.className = 'status-badge status-ready';
+                
+                // Check components
+                const components = status.components || {};
+                
+                if (components.embeddings && components.embeddings.status === 'ready') {
+                    embeddingsBadge.textContent = `Ready (${components.embeddings.total_embeddings || 0})`;
+                    embeddingsBadge.className = 'status-badge status-ready';
+                } else {
+                    embeddingsBadge.textContent = 'Error';
+                    embeddingsBadge.className = 'status-badge status-error';
+                }
+                
+                if (components.sql_generator && components.sql_generator.status === 'ready') {
+                    aiModelBadge.textContent = 'Ready';
+                    aiModelBadge.className = 'status-badge status-ready';
+                } else {
+                    aiModelBadge.textContent = 'Error';
+                    aiModelBadge.className = 'status-badge status-error';
+                }
+            } else {
+                systemBadge.textContent = 'Not Ready';
+                systemBadge.className = 'status-badge status-error';
+                embeddingsBadge.textContent = 'N/A';
+                embeddingsBadge.className = 'status-badge status-error';
+                aiModelBadge.textContent = 'N/A';
+                aiModelBadge.className = 'status-badge status-error';
+            }
+        }
+        
+        // Generate SQL
+        async function generateSQL() {
+            const srfText = document.getElementById('srfText').value.trim();
+            const supportingInfo = document.getElementById('supportingInfo').value.trim();
+            
+            if (!srfText) {
+                alert('Please enter SRF content');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('resultSection').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/generate-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        srf_text: srfText,
+                        supporting_info: supportingInfo
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Hide loading
+                document.getElementById('loadingSection').style.display = 'none';
+                
+                if (result.success) {
+                    showSuccessResult(result);
+                } else {
+                    showErrorResult(result);
+                }
+                
+            } catch (error) {
+                console.error('Error generating SQL:', error);
+                document.getElementById('loadingSection').style.display = 'none';
+                showErrorResult({ error: 'Connection failed: ' + error.message });
+            }
+        }
+        
+        // Show success result
+        function showSuccessResult(result) {
+            const resultTitle = document.getElementById('resultTitle');
+            const contextQuality = document.getElementById('contextQuality');
+            const similarExamples = document.getElementById('similarExamples');
+            const confidenceCount = document.getElementById('confidenceCount');
+            const sqlOutput = document.getElementById('sqlOutput');
+            const validationPanel = document.getElementById('validationPanel');
+            const validationContent = document.getElementById('validationContent');
+            
+            // Update title
+            resultTitle.textContent = '✅ SQL Generation Successful!';
+            resultTitle.className = 'result-title result-success';
+            
+            // Update stats
+            const quality = result.context_quality || {};
+            contextQuality.textContent = quality.quality || 'N/A';
+            similarExamples.textContent = result.similar_examples_count || 0;
+            confidenceCount.textContent = result.high_confidence_count || 0;
+            
+            // Show SQL
+            sqlOutput.textContent = result.generated_sql || 'No SQL generated';
+            
+            // Show validation
+            const validation = result.validation || {};
+            if (validation.is_valid) {
+                validationPanel.className = 'validation-panel validation-valid';
+                validationContent.innerHTML = '<div class="validation-item">✅ SQL validation passed</div>';
+            } else {
+                validationPanel.className = 'validation-panel validation-issues';
+                let content = '<div class="validation-item">⚠️ Validation Issues:</div>';
+                (validation.issues || []).forEach(issue => {
+                    content += `<div class="validation-item">• ${issue}</div>`;
+                });
+                validationContent.innerHTML = content;
+            }
+            
+            // Add suggestions if any
+            if (validation.suggestions && validation.suggestions.length > 0) {
+                let suggestionsHTML = '<div class="validation-item" style="margin-top: 10px;">💡 Suggestions:</div>';
+                validation.suggestions.forEach(suggestion => {
+                    suggestionsHTML += `<div class="validation-item">• ${suggestion}</div>`;
+                });
+                validationContent.innerHTML += suggestionsHTML;
+            }
+            
+            // Show result section
+            document.getElementById('resultSection').style.display = 'block';
+        }
+        
+        // Show error result
+        function showErrorResult(result) {
+            const resultTitle = document.getElementById('resultTitle');
+            const sqlOutput = document.getElementById('sqlOutput');
+            const validationPanel = document.getElementById('validationPanel');
+            
+            // Update title
+            resultTitle.textContent = '❌ SQL Generation Failed';
+            resultTitle.className = 'result-title result-error';
+            
+            // Show error
+            sqlOutput.textContent = `Error: ${result.error || 'Unknown error occurred'}`;
+            
+            // Hide validation panel
+            validationPanel.style.display = 'none';
+            
+            // Show result section
+            document.getElementById('resultSection').style.display = 'block';
+        }
+        
+        // Copy SQL to clipboard
+        function copySQLToClipboard() {
+            const sqlOutput = document.getElementById('sqlOutput');
+            const text = sqlOutput.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('SQL copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy SQL');
+            });
+        }
+        
+        // Clear form
+        function clearForm() {
+            document.getElementById('srfText').value = '';
+            document.getElementById('supportingInfo').value = '';
+            document.getElementById('resultSection').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
