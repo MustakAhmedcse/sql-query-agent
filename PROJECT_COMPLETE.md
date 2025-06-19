@@ -108,7 +108,7 @@ python run.py cli
 
 ### **Ollama Settings** (config/.env):
 ```
-OLLAMA_API_BASE_URL=http://27.147.159.197:11434
+OLLAMA_API_BASE_URL=http://192.168.105.58:11434
 OLLAMA_MODEL=qwen3
 ```
 

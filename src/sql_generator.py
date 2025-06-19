@@ -1,8 +1,10 @@
 """
 SQL Generator - AI-powered SQL generation with fallback to template-based generation
+
 Combines both AI and template approaches for robust SQL generation
-Supports both OpenAI and Ollama
+Supports OpenAI, Ollama, and Template-only modes
 """
+
 import logging
 import requests
 import json
@@ -15,25 +17,32 @@ logger = logging.getLogger(__name__)
 class SQLGenerator:
     """Main SQL Generator that combines AI and template-based approaches"""
     
-    def __init__(self, ai_provider="openai", api_key=None, model_name=None, ollama_base_url="http://localhost:11434"):
+    def __init__(self, ai_provider="openai", api_key=None, model_name=None, ollama_base_url="http://192.168.105.58:11434"):
         self.ai_provider = ai_provider.lower()
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         
         if self.ai_provider == "openai":
-            self.model_name = model_name or "gpt-4o-mini"
+            self.model_name = model_name or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
             self.api_url = "https://api.openai.com/v1/chat/completions"
-        else:  # ollama
-            self.ollama_base_url = ollama_base_url
-            self.model_name = model_name or "qwen3"
-            
-        self.template_generator = TemplateBasedSQLGenerator()
+        elif self.ai_provider == "ollama":
+            self.ollama_base_url = ollama_base_url or os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
+            self.model_name = model_name or os.getenv("OLLAMA_MODEL", "qwen3")
+        # else: template mode - no AI configuration needed
         
+        # Initialize template generator for fallback
+        self.template_generator = TemplateBasedSQLGenerator()
+    
     def generate_sql_query(self, formatted_context: str) -> Dict:
         """
-        Generate SQL query with AI-first approach, fallback to template
+        Generate SQL query based on configured AI provider
         """
         try:
-            # First, try AI-based generation
+            # For template-only mode, skip AI generation
+            if self.ai_provider == "template":
+                logger.info("Using template-based generation (AI disabled)")
+                return self._generate_with_template(formatted_context)
+            
+            # For AI providers (OpenAI/Ollama), try AI first, fallback to template
             ai_result = self._generate_with_ai(formatted_context)
             
             if ai_result['success']:
@@ -43,7 +52,7 @@ class SQLGenerator:
                 return ai_result
             else:
                 logger.warning(f"AI generation failed: {ai_result.get('error')}")
-                
+        
         except Exception as e:
             logger.warning(f"AI generation error: {str(e)}")
         
@@ -56,9 +65,14 @@ class SQLGenerator:
         try:
             if self.ai_provider == "openai":
                 return self._generate_with_openai(formatted_context)
-            else:
+            elif self.ai_provider == "ollama":
                 return self._generate_with_ollama(formatted_context)
-                
+            else:
+                return {
+                    'success': False,
+                    'error': f'Unknown AI provider: {self.ai_provider}'
+                }
+        
         except Exception as e:
             logger.error(f"AI generation error: {str(e)}")
             return {
@@ -128,7 +142,7 @@ class SQLGenerator:
                     'success': False,
                     'error': error_msg
                 }
-                
+        
         except Exception as e:
             logger.error(f"OpenAI generation error: {str(e)}")
             return {
@@ -185,7 +199,7 @@ class SQLGenerator:
                     'success': False,
                     'error': f'Ollama API error: {response.status_code}'
                 }
-                
+        
         except Exception as e:
             logger.error(f"Ollama generation error: {str(e)}")
             return {
@@ -198,7 +212,8 @@ class SQLGenerator:
         try:
             # Extract SRF text from context
             srf_text = self._extract_srf_from_context(formatted_context)
-              # Use template generator
+            
+            # Use template generator
             result = self.template_generator.generate_sql_from_srf(srf_text)
             
             if result['success']:
@@ -210,9 +225,9 @@ class SQLGenerator:
                 validation = self.validate_generated_sql(result['sql_query'])
                 result['validation'] = validation
                 result['method'] = 'template-based'
-                
-            return result
             
+            return result
+        
         except Exception as e:
             logger.error(f"Template generation error: {str(e)}")
             return {
@@ -232,7 +247,6 @@ class SQLGenerator:
     def _prepare_ai_prompt(self, formatted_context: str) -> str:
         """Prepare prompt for AI model"""
         return f"""You are an expert SQL developer specializing in MyBL Commission reports for a telecom company.
-
 Your task is to generate accurate SQL queries based on SRF (Service Request Form) requirements.
 
 CONTEXT:

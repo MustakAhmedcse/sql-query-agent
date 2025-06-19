@@ -7,13 +7,12 @@ import sys
 import json
 import logging
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Add src directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+# Import configuration
+from config.settings import settings
 
 # Setup logging
 logging.basicConfig(
@@ -51,13 +50,11 @@ class CommissionAIAssistant:
                 print("✅ Data processing completed!")
             else:
                 print("⚠️  No training data provided, using existing processed data")
-              # Step 2: Setup Embeddings
+            
+            # Step 2: Setup Embeddings
             print("\n2️⃣ Setting up embeddings...")
             from embedding_manager import setup_embeddings_from_processed_data
-            
-            # Use absolute path to handle different working directories
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            processed_file = os.path.join(script_dir, "data", "training_data", "processed_training_data.json")
+            processed_file = "./data/training_data/processed_training_data.json"
             
             if os.path.exists(processed_file):
                 self.embedding_manager = setup_embeddings_from_processed_data(processed_file)
@@ -66,23 +63,45 @@ class CommissionAIAssistant:
                 print("✅ Embeddings setup completed!")
             else:
                 raise Exception(f"Processed data file not found: {processed_file}")
-            
-            # Step 3: Initialize RAG System
+              # Step 3: Initialize RAG System
             print("\n3️⃣ Initializing RAG system...")
             from rag_system import RAGSystem
-            self.rag_system = RAGSystem(self.embedding_manager)
+            self.rag_system = RAGSystem(self.embedding_manager, confidence_threshold=settings.CONFIDENCE_THRESHOLD)
             print("✅ RAG system initialized!")
-              # Step 4: Initialize SQL Generator
+            
+            # Step 4: Initialize SQL Generator
             print("\n4️⃣ Initializing SQL generator...")
             from sql_generator import SQLGenerator
             
-            # Check for OpenAI API key
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            if openai_api_key:
-                print("   Using OpenAI for SQL generation...")
-                self.sql_generator = SQLGenerator(ai_provider="openai", api_key=openai_api_key)
+            # Initialize SQL generator based on configured AI provider
+            ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+            
+            if ai_provider == "openai":
+                openai_key = os.getenv("OPENAI_API_KEY")
+                openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+                
+                if openai_key:
+                    print(f"   Using OpenAI ({openai_model}) for SQL generation...")
+                    self.sql_generator = SQLGenerator(
+                        ai_provider="openai",
+                        api_key=openai_key,
+                        model_name=openai_model
+                    )
+                else:
+                    print("   ⚠️  OpenAI selected but no API key found. Falling back to template generation...")
+                    self.sql_generator = SQLGenerator(ai_provider="template")
+            elif ai_provider == "ollama":
+                ollama_url = os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
+                ollama_model = os.getenv("OLLAMA_MODEL", "qwen3")
+                
+                print(f"   Using Ollama ({ollama_model}) for SQL generation...")
+                self.sql_generator = SQLGenerator(
+                    ai_provider="ollama",
+                    model_name=ollama_model,
+                    ollama_base_url=ollama_url
+                )
             else:
-                print("   No OpenAI API key found, using template-based generation...")
+                print(f"   Unknown AI provider '{ai_provider}'. Using template-based generation...")
                 self.sql_generator = SQLGenerator(ai_provider="template")
                 
             print("✅ SQL generator initialized!")
@@ -109,10 +128,9 @@ class CommissionAIAssistant:
         try:
             print(f"\n🔍 Processing SRF request...")
             print(f"SRF length: {len(srf_text)} characters")
-            
-            # Step 1: Retrieve similar examples
+              # Step 1: Retrieve similar examples
             print("1️⃣ Finding similar examples...")
-            context = self.rag_system.retrieve_context(srf_text)
+            context = self.rag_system.retrieve_context(srf_text, max_results=settings.MAX_RETRIEVAL_RESULTS)
             
             quality_analysis = self.rag_system.analyze_retrieval_quality(context)
             print(f"   Quality: {quality_analysis['quality']}")

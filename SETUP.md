@@ -4,7 +4,7 @@
 
 ### 1. Prerequisites চেক করুন:
 - ✅ Python 3.7+ installed
-- ✅ Ollama server running at http://27.147.159.197:11434  
+- ✅ Ollama server running at http://192.168.105.58:11434  
 - ✅ Qwen3 model available in Ollama
 - ✅ Your training data (srf_sql_pairs.jsonl) ready
 

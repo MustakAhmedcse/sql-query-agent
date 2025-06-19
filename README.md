@@ -49,7 +49,7 @@ pip install -r requirements.txt
 ### 2. Configuration
 ```bash
 # .env file তৈরি করুন
-OLLAMA_API_BASE_URL=http://27.147.159.197:11434
+OLLAMA_API_BASE_URL=http://192.168.105.58:11434
 OLLAMA_MODEL=qwen3
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 CHROMA_DB_PATH=./data/embeddings
