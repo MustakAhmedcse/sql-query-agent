@@ -78,10 +78,37 @@
             background: #d4edda;
             color: #155724;
         }
-        
-        .status-error {
+          .status-error {
             background: #f8d7da;
             color: #721c24;
+        }
+        
+        .config-row {
+            display: flex;
+            gap: 20px;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+        
+        .config-item {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .config-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .config-item select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
         }
         
         .input-section {
@@ -161,9 +188,120 @@
             margin: 0 auto 15px;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* File Upload Styles */
+        .file-upload-container {
+            margin-bottom: 15px;
+        }
+        
+        .file-upload-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .file-name {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .file-name.success {
+            color: #155724;
+            font-weight: bold;
+        }
+        
+        .or-divider {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            margin: 10px 0;
+            position: relative;
+        }
+        
+        .or-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+            z-index: 1;
+        }
+        
+        .or-divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .sheet-selector {
+            margin-top: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .sheet-selector label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .sheet-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+        }
+        
+        .file-upload-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .file-upload-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .file-upload-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        /* Make OR divider work properly */
+        .or-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+        
+        .or-divider::before {
+            margin-right: 15px;
+        }
+        
+        .or-divider::after {
+            margin-left: 15px;
         }
         
         .result-section {
@@ -311,15 +449,47 @@
                         <span>AI Model:</span>
                         <span class="status-badge status-ready" id="aiModelStatusBadge">Loading...</span>
                     </div>
+                </div>            </div>
+            
+            <!-- AI Configuration Section -->
+            <div class="status-panel">
+                <h3>⚙️ AI Configuration</h3>
+                <div class="config-row">
+                    <div class="config-item">
+                        <label for="aiProvider">AI Provider:</label>
+                        <select id="aiProvider" onchange="onProviderChange()">
+                            <option value="openai">OpenAI</option>
+                            <option value="ollama">Ollama</option>
+                            <option value="template">Template (No AI)</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <label for="aiModel">Model:</label>
+                        <select id="aiModel" onchange="onModelChange()">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="config-item">
+                        <button class="btn btn-secondary" onclick="loadAIConfig()">🔄 Refresh</button>
+                    </div>
                 </div>
             </div>
-            
-            <!-- Input Section -->
+              <!-- Input Section -->
             <div class="input-section">
                 <h3>📝 Generate SQL Query</h3>
                 
                 <div class="input-group">
                     <label for="srfText">SRF Content *</label>
+                    <div class="file-upload-container">
+                        <div class="file-upload-section">
+                            <input type="file" id="srfFileInput" accept=".doc,.docx" onchange="uploadSRFFile()" style="display: none;">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('srfFileInput').click()">
+                                📄 Upload SRF Document (.doc/.docx)
+                            </button>
+                            <span id="srfFileName" class="file-name"></span>
+                        </div>
+                        <div class="or-divider">OR</div>
+                    </div>
                     <textarea 
                         id="srfText" 
                         rows="8" 
@@ -329,6 +499,22 @@
                 
                 <div class="input-group">
                     <label for="supportingInfo">Supporting Information (Optional)</label>
+                    <div class="file-upload-container">
+                        <div class="file-upload-section">
+                            <input type="file" id="supportingFileInput" accept=".xlsx,.xls,.csv" onchange="uploadSupportingFile()" style="display: none;">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('supportingFileInput').click()">
+                                📊 Upload Excel/CSV (.xlsx/.xls/.csv)
+                            </button>
+                            <span id="supportingFileName" class="file-name"></span>
+                        </div>
+                        <div id="sheetSelector" class="sheet-selector" style="display: none;">
+                            <label for="sheetSelect">Select Sheet:</label>
+                            <select id="sheetSelect" onchange="extractExcelData()">
+                                <option value="">Choose a sheet...</option>
+                            </select>
+                        </div>
+                        <div class="or-divider">OR</div>
+                    </div>
                     <textarea 
                         id="supportingInfo" 
                         rows="4" 
@@ -366,10 +552,21 @@
                     <div class="stat-item">
                         <div class="stat-value" id="similarExamples">-</div>
                         <div class="stat-label">Similar Examples</div>
-                    </div>
-                    <div class="stat-item">
+                    </div>                    <div class="stat-item">
                         <div class="stat-value" id="confidenceCount">-</div>
                         <div class="stat-label">High Confidence</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="generationTime">-</div>
+                        <div class="stat-label">Generation Time (s)</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="usedProvider">-</div>
+                        <div class="stat-label">AI Provider</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="usedModel">-</div>
+                        <div class="stat-label">Model Used</div>
                     </div>
                 </div>
                 
@@ -386,11 +583,99 @@
         </div>
     </div>
 
-    <script>
-        // Load system status on page load
+    <script>        // Load system status on page load
         window.onload = function() {
             checkSystemStatus();
+            loadAIConfig();
         };
+        
+        // Load AI configuration
+        async function loadAIConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                // Set current provider
+                document.getElementById('aiProvider').value = config.ai_provider;
+                
+                // Populate model dropdown
+                populateModelDropdown(config.ai_provider, config.models, config.current_model);
+                
+            } catch (error) {
+                console.error('Error loading AI config:', error);
+            }
+        }
+        
+        // Populate model dropdown based on provider
+        function populateModelDropdown(provider, models, currentModel) {
+            const modelSelect = document.getElementById('aiModel');
+            modelSelect.innerHTML = '';
+            
+            const availableModels = models[provider] || [];
+            
+            if (availableModels.length === 0) {
+                modelSelect.innerHTML = '<option value="">No models available</option>';
+                return;
+            }
+            
+            availableModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                if (model === currentModel) {
+                    option.selected = true;
+                }
+                modelSelect.appendChild(option);
+            });
+        }
+        
+        // Handle provider change
+        async function onProviderChange() {
+            const provider = document.getElementById('aiProvider').value;
+            
+            try {
+                // Update backend
+                await fetch('/api/update-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ai_provider: provider })
+                });
+                
+                // Reload config to update models
+                loadAIConfig();
+                
+            } catch (error) {
+                console.error('Error updating provider:', error);
+                alert('Failed to update AI provider');
+            }
+        }
+        
+        // Handle model change
+        async function onModelChange() {
+            const provider = document.getElementById('aiProvider').value;
+            const model = document.getElementById('aiModel').value;
+            
+            if (!model) return;
+            
+            try {
+                const updateData = {};
+                if (provider === 'openai') {
+                    updateData.openai_model = model;
+                } else if (provider === 'ollama') {
+                    updateData.ollama_model = model;
+                }
+                
+                await fetch('/api/update-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                
+            } catch (error) {
+                console.error('Error updating model:', error);
+                alert('Failed to update model');
+            }
+        }
         
         // Check system status
         async function checkSystemStatus() {
@@ -486,13 +771,15 @@
                 showErrorResult({ error: 'Connection failed: ' + error.message });
             }
         }
-        
-        // Show success result
+          // Show success result
         function showSuccessResult(result) {
             const resultTitle = document.getElementById('resultTitle');
             const contextQuality = document.getElementById('contextQuality');
             const similarExamples = document.getElementById('similarExamples');
             const confidenceCount = document.getElementById('confidenceCount');
+            const generationTime = document.getElementById('generationTime');
+            const usedProvider = document.getElementById('usedProvider');
+            const usedModel = document.getElementById('usedModel');
             const sqlOutput = document.getElementById('sqlOutput');
             const validationPanel = document.getElementById('validationPanel');
             const validationContent = document.getElementById('validationContent');
@@ -506,6 +793,9 @@
             contextQuality.textContent = quality.quality || 'N/A';
             similarExamples.textContent = result.similar_examples_count || 0;
             confidenceCount.textContent = result.high_confidence_count || 0;
+            generationTime.textContent = result.generation_time || 0;
+            usedProvider.textContent = result.ai_provider || 'N/A';
+            usedModel.textContent = result.model_used || 'N/A';
             
             // Show SQL
             sqlOutput.textContent = result.generated_sql || 'No SQL generated';
@@ -575,6 +865,179 @@
             document.getElementById('srfText').value = '';
             document.getElementById('supportingInfo').value = '';
             document.getElementById('resultSection').style.display = 'none';
+        }
+        
+        // File Upload Functions
+        let currentSupportingFile = null;
+        
+        async function uploadSRFFile() {
+            const fileInput = document.getElementById('srfFileInput');
+            const fileName = document.getElementById('srfFileName');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            fileName.textContent = 'Uploading...';
+            fileName.className = 'file-name';
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/upload-srf', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    fileName.textContent = `✅ ${file.name}`;
+                    fileName.className = 'file-name success';
+                    
+                    // Fill the textarea with extracted text
+                    document.getElementById('srfText').value = result.text;
+                    
+                    // Show success message
+                    showFileUploadStatus('srf', 'success', 'SRF content extracted successfully!');
+                } else {
+                    fileName.textContent = `❌ ${file.name} - Error`;
+                    fileName.className = 'file-name error';
+                    showFileUploadStatus('srf', 'error', result.error || 'Failed to process file');
+                }
+                
+            } catch (error) {
+                fileName.textContent = `❌ ${file.name} - Error`;
+                fileName.className = 'file-name error';
+                showFileUploadStatus('srf', 'error', 'Upload failed: ' + error.message);
+            }
+        }
+        
+        async function uploadSupportingFile() {
+            const fileInput = document.getElementById('supportingFileInput');
+            const fileName = document.getElementById('supportingFileName');
+            const sheetSelector = document.getElementById('sheetSelector');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            fileName.textContent = 'Uploading...';
+            fileName.className = 'file-name';
+            sheetSelector.style.display = 'none';
+            
+            // Store the file for later use
+            currentSupportingFile = file;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('/api/upload-supporting', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    fileName.textContent = `✅ ${file.name}`;
+                    fileName.className = 'file-name success';
+                    
+                    if (result.requires_sheet_selection) {
+                        // Show sheet selector for Excel files
+                        populateSheetSelector(result.sheet_names);
+                        sheetSelector.style.display = 'block';
+                        showFileUploadStatus('supporting', 'success', 'File uploaded. Please select a sheet to extract data.');
+                    } else {
+                        // CSV file - data already extracted
+                        document.getElementById('supportingInfo').value = result.text;
+                        showFileUploadStatus('supporting', 'success', 'Supporting information extracted successfully!');
+                    }
+                } else {
+                    fileName.textContent = `❌ ${file.name} - Error`;
+                    fileName.className = 'file-name error';
+                    showFileUploadStatus('supporting', 'error', result.error || 'Failed to process file');
+                }
+                
+            } catch (error) {
+                fileName.textContent = `❌ ${file.name} - Error`;
+                fileName.className = 'file-name error';
+                showFileUploadStatus('supporting', 'error', 'Upload failed: ' + error.message);
+            }
+        }
+        
+        function populateSheetSelector(sheetNames) {
+            const select = document.getElementById('sheetSelect');
+            select.innerHTML = '<option value="">Choose a sheet...</option>';
+            
+            sheetNames.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+        }
+        
+        async function extractExcelData() {
+            const sheetSelect = document.getElementById('sheetSelect');
+            const selectedSheet = sheetSelect.value;
+            
+            if (!selectedSheet || !currentSupportingFile) return;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', currentSupportingFile);
+                formData.append('sheet_name', selectedSheet);
+                
+                const response = await fetch('/api/extract-excel-data', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('supportingInfo').value = result.text;
+                    showFileUploadStatus('supporting', 'success', 
+                        `Data extracted from sheet "${selectedSheet}". ` +
+                        `Found ${result.info?.rows || 0} rows and ${result.info?.columns || 0} columns.`
+                    );
+                } else {
+                    showFileUploadStatus('supporting', 'error', result.error || 'Failed to extract data');
+                }
+                
+            } catch (error) {
+                showFileUploadStatus('supporting', 'error', 'Extraction failed: ' + error.message);
+            }
+        }
+        
+        function showFileUploadStatus(type, status, message) {
+            // Remove existing status messages
+            const existingStatus = document.querySelector(`.file-upload-status.${type}`);
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+            
+            // Create new status message
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `file-upload-status ${status} ${type}`;
+            statusDiv.textContent = message;
+            
+            // Find the appropriate input group and append status
+            const inputGroup = type === 'srf' ? 
+                document.querySelector('label[for="srfText"]').parentNode :
+                document.querySelector('label[for="supportingInfo"]').parentNode;
+            
+            inputGroup.appendChild(statusDiv);
+            
+            // Auto-remove success messages after 5 seconds
+            if (status === 'success') {
+                setTimeout(() => {
+                    if (statusDiv.parentNode) {
+                        statusDiv.remove();
+                    }
+                }, 5000);
+            }
         }
     </script>
 </body>

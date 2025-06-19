@@ -25,12 +25,14 @@ class Settings:
     # =============================================================================
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    OPENAI_MODELS = [model.strip() for model in os.getenv("OPENAI_MODELS", "gpt-4o,gpt-4o-mini,gpt-4-turbo,gpt-4,gpt-3.5-turbo").split(",")]
     
     # =============================================================================
     # OLLAMA CONFIGURATION
     # =============================================================================
     OLLAMA_API_BASE_URL = os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3")
+    OLLAMA_MODELS = [model.strip() for model in os.getenv("OLLAMA_MODELS", "qwen3:4b-q8_0,llama3:8b,llama3:70b,codellama:7b,mistral:7b,phi3:mini").split(",")]
     
     # =============================================================================
     # EMBEDDING CONFIGURATION
