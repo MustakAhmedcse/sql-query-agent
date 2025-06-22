@@ -64,13 +64,13 @@ class RAGSystem:
         
         # Context prompt তৈরি করি
         formatted_context = f"""
-আপনি একজন SQL query generation expert। আপনার কাজ হল SRF (Sales Report Format) দেখে accurate SQL query generate করা।
+            You are an SQL query generation expert. Your task is to generate accurate SQL queries by analyzing SRF (Sales Report Format).
 
-TARGET SRF (যার জন্য SQL query generate করতে হবে):
-{query_srf}
+            TARGET SRF (for which SQL query needs to be generated):
+            {query_srf}
 
-SIMILAR EXAMPLES (historical data থেকে similar SRFs এবং তাদের SQL queries):
-"""
+            SIMILAR EXAMPLES (similar SRFs and their SQL queries from historical data):
+            """
         
         # Similar examples add করি
         for i, example in enumerate(similar_examples, 1):
@@ -79,25 +79,25 @@ SIMILAR EXAMPLES (historical data থেকে similar SRFs এবং তাদ�
             sql_query = example.get('sql_query', '')
             
             formatted_context += f"""
---- Example {i} (Similarity: {similarity_score:.2f}) ---
-SRF: {srf_text}
+            --- Example {i} (Similarity: {similarity_score:.2f}) ---
+            SRF: {srf_text}
 
-SQL Query:
-{sql_query}
+            SQL Query:
+            {sql_query}
 
-"""
+            """
         
         # Instructions add করি
         formatted_context += """
-INSTRUCTIONS:
-1. উপরের similar examples analyze করুন
-2. Target SRF এর requirements understand করুন  
-3. Similar patterns দেখে accurate SQL query generate করুন
-4. MyBL Commission এর business logic maintain করুন
-5. Proper table names, columns এবং conditions use করুন
+            INSTRUCTIONS:
+            1. Analyze the similar examples above
+            2. Understand the Target SRF requirements  
+            3. Generate accurate SQL query by observing similar patterns
+            4. Maintain commission business logic
+            5. Use proper table names, columns and conditions
 
-Generate SQL Query for the Target SRF:
-"""
+            Generate SQL Query for the Target SRF:
+            """
         
         return formatted_context
     

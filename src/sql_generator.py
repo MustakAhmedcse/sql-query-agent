@@ -225,25 +225,25 @@ class SQLGenerator:
     
     def _prepare_ai_prompt(self, formatted_context: str) -> str:
         """Prepare prompt for AI model"""
-        return f"""You are an expert SQL developer specializing in MyBL Commission reports for a telecom company.
-Your task is to generate accurate SQL queries based on SRF (Service Request Form) requirements.
+        return f"""You are an expert SQL developer specializing in Commission reports for a telecom company.
+                    Your task is to generate accurate SQL queries based on SRF (Service Request Form) requirements.
 
-CONTEXT:
-{formatted_context}
+                    CONTEXT:
+                    {formatted_context}
 
-REQUIREMENTS:
-1. Generate a complete, executable SQL query
-2. Use proper table names and column names for MyBL commission system
-3. Include all necessary conditions from the SRF
-4. Add comments explaining key parts
-5. Focus on commission calculation logic
-6. Handle time-based conditions if specified
-7. Include proper date filtering
-8. Use appropriate joins and aggregations
+                    REQUIREMENTS:
+                    1. Generate a complete, executable SQL query
+                    2. Use proper table names and column names for commission system
+                    3. Include all necessary conditions from the SRF
+                    4. Add comments explaining key parts
+                    5. Focus on commission calculation logic
+                    6. Handle time-based conditions if specified
+                    7. Include proper date filtering
+                    8. Use appropriate joins and aggregations
 
-Generate ONLY the SQL query with comments. Do not include explanations outside the SQL.
+                    Generate ONLY the SQL query with comments. Do not include explanations outside the SQL.
 
-SQL Query:"""
+                    SQL Query:"""
     
     def _extract_sql_from_response(self, response_text: str) -> Optional[str]:
         """Extract SQL query from AI response"""
