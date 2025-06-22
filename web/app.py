@@ -9,6 +9,7 @@ from pydantic import BaseModel
 import os
 import sys
 import uvicorn
+import time
 from dotenv import load_dotenv
 from typing import Optional
 
@@ -135,15 +136,17 @@ async def generate_sql(request: SRFRequest):
         
         end_time = time.time()
         generation_time = round(end_time - start_time, 2)
-        
-        # Add timing and AI info to result
+          # Add timing and AI info to result
         result['generation_time'] = generation_time
-        result['ai_provider'] = os.getenv("AI_PROVIDER", "openai")
-        result['model_used'] = (
-            os.getenv("OPENAI_MODEL", "gpt-4o-mini") if result['ai_provider'] == "openai"
-            else os.getenv("OLLAMA_MODEL", "qwen3") if result['ai_provider'] == "ollama"
-            else "template"
-        )
+        current_provider = os.getenv("AI_PROVIDER", "openai")
+        result['ai_provider'] = current_provider
+        
+        if current_provider == "openai":
+            result['model_used'] = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        elif current_provider == "ollama":
+            result['model_used'] = os.getenv("OLLAMA_MODEL", "qwen3")
+        else:
+            result['model_used'] = "unknown"
         
         return SQLResponse(**result)
         
@@ -194,21 +197,28 @@ async def health_check():
 @app.get("/api/config", response_model=ConfigResponse)
 async def get_config():
     """Get current AI configuration"""
-    from config.settings import settings
+    # Import settings fresh to get updated environment variables
+    import importlib
+    from config import settings
+    importlib.reload(settings)
+    
+    # Get current values directly from environment
+    current_ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
+    current_openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    current_ollama_model = os.getenv("OLLAMA_MODEL", "qwen3")
     
     # Determine current model based on provider
     current_model = ""
-    if settings.AI_PROVIDER == "openai":
-        current_model = settings.OPENAI_MODEL
-    elif settings.AI_PROVIDER == "ollama":
-        current_model = settings.OLLAMA_MODEL
+    if current_ai_provider == "openai":
+        current_model = current_openai_model
+    elif current_ai_provider == "ollama":
+        current_model = current_ollama_model
     
     return ConfigResponse(
-        ai_provider=settings.AI_PROVIDER,
+        ai_provider=current_ai_provider,
         models={
-            "openai": settings.OPENAI_MODELS,
-            "ollama": settings.OLLAMA_MODELS,
-            "template": []
+            "openai": settings.Settings.OPENAI_MODELS,
+            "ollama": settings.Settings.OLLAMA_MODELS
         },
         current_model=current_model
     )
@@ -218,18 +228,20 @@ async def update_config(config: UpdateConfigRequest):
     """Update AI provider and model configuration"""
     global assistant
     
-    try:
-        # Update environment variables
+    try:        # Update environment variables
         if config.ai_provider:
             os.environ["AI_PROVIDER"] = config.ai_provider
+            # Also update the .env file to persist the change
+            update_env_file("AI_PROVIDER", config.ai_provider)
         
         if config.openai_model:
             os.environ["OPENAI_MODEL"] = config.openai_model
+            update_env_file("OPENAI_MODEL", config.openai_model)
             
         if config.ollama_model:
             os.environ["OLLAMA_MODEL"] = config.ollama_model
-        
-        # Reinitialize the SQL generator if assistant is available
+            update_env_file("OLLAMA_MODEL", config.ollama_model)
+          # Reinitialize the SQL generator if assistant is available
         if assistant and assistant.is_initialized:
             from sql_generator import SQLGenerator
             
@@ -244,14 +256,14 @@ async def update_config(config: UpdateConfigRequest):
                         model_name=os.getenv("OPENAI_MODEL", "gpt-4o-mini")
                     )
                 else:
-                    assistant.sql_generator = SQLGenerator(ai_provider="template")
+                    raise HTTPException(status_code=400, detail="OpenAI API key not configured")
             elif current_provider == "ollama":
                 assistant.sql_generator = SQLGenerator(
                     ai_provider="ollama",
-                    model_name=os.getenv("OLLAMA_MODEL", "qwen3"),                    ollama_base_url=os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
-                )
+                    model_name=os.getenv("OLLAMA_MODEL", "qwen3"),
+                    ollama_base_url=os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")                )
             else:
-                assistant.sql_generator = SQLGenerator(ai_provider="template")
+                raise HTTPException(status_code=400, detail="Invalid AI provider. Only 'openai' and 'ollama' are supported.")
         
         return {
             "success": True,
@@ -371,8 +383,7 @@ async def extract_excel_data(
             return ExcelDataResponse(
                 success=True,
                 text=result.get('text', ''),
-                html=result.get('html', ''),
-                info=result.get('info', {})
+                html=result.get('html', ''),                info=result.get('info', {})
             )
         else:
             return ExcelDataResponse(
@@ -383,40 +394,36 @@ async def extract_excel_data(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/config", response_model=ConfigResponse)
-async def get_config():
-    """Get current configuration"""
-    global assistant
-    
-    if not assistant:
-        raise HTTPException(status_code=503, detail="AI Assistant not initialized")
-    
+def update_env_file(key: str, value: str):
+    """Update a key-value pair in the .env file"""
     try:
-        config = assistant.get_config()
-        return ConfigResponse(**config)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/config", response_model=ConfigResponse)
-async def update_config(request: UpdateConfigRequest):
-    """Update configuration settings"""
-    global assistant
-    
-    if not assistant:
-        raise HTTPException(status_code=503, detail="AI Assistant not initialized")
-    
-    try:
-        success = assistant.update_config(request.ai_provider, request.model)
+        env_file_path = ".env"
         
-        if success:
-            # Return updated config
-            config = assistant.get_config()
-            return ConfigResponse(**config)
-        else:
-            raise HTTPException(status_code=400, detail="Invalid configuration update")
+        # Read current .env file
+        lines = []
+        if os.path.exists(env_file_path):
+            with open(env_file_path, 'r') as f:
+                lines = f.readlines()
+        
+        # Update or add the key
+        key_found = False
+        for i, line in enumerate(lines):
+            if line.strip().startswith(f"{key}="):
+                lines[i] = f"{key}={value}\n"
+                key_found = True
+                break
+        
+        # If key not found, add it
+        if not key_found:
+            lines.append(f"{key}={value}\n")
+        
+        # Write back to file
+        with open(env_file_path, 'w') as f:
+            f.writelines(lines)
             
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error updating .env file: {e}")
+        # Don't raise error, just log it
 
 # Run server
 def run_web_app():

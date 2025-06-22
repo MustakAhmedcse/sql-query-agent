@@ -46,15 +46,9 @@ def test_ai_provider():
         generator_ollama = SQLGenerator(ai_provider="ollama", ollama_base_url=ollama_url)
         
         # Test Ollama availability
-        if generator_ollama._check_ollama_availability():
-            print("   ✅ Ollama server is available")
+        if generator_ollama._check_ollama_availability():            print("   ✅ Ollama server is available")
         else:
             print("   ⚠️  Ollama server is not available")
-        
-        # Test Template provider
-        print("\n3️⃣ Testing Template Provider:")
-        generator_template = SQLGenerator(ai_provider="template")
-        print("   ✅ Template generator initialized successfully")
         
         print("\n🎉 All provider tests completed!")
         return True
@@ -109,7 +103,7 @@ def show_current_config():
         print(f"🌐 URL: {url}")
         print("💡 To switch to OpenAI: Set AI_PROVIDER=openai in .env file")
     else:
-        print("📝 Using template-based generation")
+        print("📝 Using fallback template-based generation")
         print("💡 To use AI: Set AI_PROVIDER=openai or AI_PROVIDER=ollama in .env file")
 
 if __name__ == "__main__":

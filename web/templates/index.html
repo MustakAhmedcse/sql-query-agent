@@ -82,8 +82,7 @@
             background: #f8d7da;
             color: #721c24;
         }
-        
-        .config-row {
+          .config-row {
             display: flex;
             gap: 20px;
             align-items: end;
@@ -92,7 +91,7 @@
         
         .config-item {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
         }
         
         .config-item label {
@@ -177,15 +176,57 @@
             text-align: center;
             padding: 20px;
         }
-        
-        .loading-spinner {
+          .loading-spinner {
             border: 4px solid #f3f3f3;
             border-top: 4px solid #667eea;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 60px;
+            height: 60px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 20px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .loading p {
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .loading-dots {
+            display: inline-block;
+            animation: loadingDots 1.5s infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes loadingDots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        
+        .config-disabled {
+            opacity: 0.6;
+            pointer-events: none;
         }
         
         /* File Upload Styles */
@@ -453,14 +494,12 @@
             
             <!-- AI Configuration Section -->
             <div class="status-panel">
-                <h3>⚙️ AI Configuration</h3>
-                <div class="config-row">
+                <h3>⚙️ AI Configuration</h3>                <div class="config-row">
                     <div class="config-item">
                         <label for="aiProvider">AI Provider:</label>
                         <select id="aiProvider" onchange="onProviderChange()">
                             <option value="openai">OpenAI</option>
                             <option value="ollama">Ollama</option>
-                            <option value="template">Template (No AI)</option>
                         </select>
                     </div>
                     <div class="config-item">
@@ -468,9 +507,6 @@
                         <select id="aiModel" onchange="onModelChange()">
                             <option value="">Loading...</option>
                         </select>
-                    </div>
-                    <div class="config-item">
-                        <button class="btn btn-secondary" onclick="loadAIConfig()">🔄 Refresh</button>
                     </div>
                 </div>
             </div>
@@ -530,12 +566,19 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Loading -->
+              <!-- Loading -->
             <div class="loading" id="loadingSection">
                 <div class="loading-spinner"></div>
-                <p>🤖 AI is generating your SQL query...</p>
+                <h3>🤖 AI is generating your SQL query<span class="loading-dots"></span></h3>
+                <p>Analyzing your SRF content and finding relevant examples</p>
                 <p style="font-size: 0.9em; color: #666;">This may take a few moments</p>
+                <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196f3;">
+                    <strong>🔄 Processing Steps:</strong>
+                    <br>• Extracting key information from SRF
+                    <br>• Searching training data for similar examples
+                    <br>• Generating optimized SQL query
+                    <br>• Validating query structure
+                </div>
             </div>
             
             <!-- Results Section -->
@@ -587,36 +630,33 @@
         window.onload = function() {
             checkSystemStatus();
             loadAIConfig();
-        };
-        
-        // Load AI configuration
+        };        // Load AI configuration
         async function loadAIConfig() {
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                
-                // Set current provider
-                document.getElementById('aiProvider').value = config.ai_provider;
-                
-                // Populate model dropdown
-                populateModelDropdown(config.ai_provider, config.models, config.current_model);
-                
-            } catch (error) {
-                console.error('Error loading AI config:', error);
-            }
+            return await loadAIConfigWithProvider(null);
         }
-        
-        // Populate model dropdown based on provider
+          // Populate model dropdown based on provider
         function populateModelDropdown(provider, models, currentModel) {
             const modelSelect = document.getElementById('aiModel');
+            if (!modelSelect) {
+                console.error('Model select element not found');
+                return;
+            }
+            
             modelSelect.innerHTML = '';
             
-            const availableModels = models[provider] || [];
+            const availableModels = models && models[provider] ? models[provider] : [];
+            console.log('Populating models for provider:', provider, 'Models:', availableModels);
             
             if (availableModels.length === 0) {
                 modelSelect.innerHTML = '<option value="">No models available</option>';
                 return;
             }
+            
+            // Add a default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select a model...';
+            modelSelect.appendChild(defaultOption);
             
             availableModels.forEach(model => {
                 const option = document.createElement('option');
@@ -627,35 +667,110 @@
                 }
                 modelSelect.appendChild(option);
             });
-        }
-        
-        // Handle provider change
+            
+            // If no current model is selected and we have models, select the first one
+            if (!currentModel && availableModels.length > 0) {
+                modelSelect.value = availableModels[0];
+                // Trigger the change event to update the backend
+                setTimeout(() => onModelChange(), 100);
+            }
+        }        // Handle provider change
         async function onProviderChange() {
             const provider = document.getElementById('aiProvider').value;
+            const providerSelect = document.getElementById('aiProvider');
+            const modelSelect = document.getElementById('aiModel');
+            
+            console.log('Provider changed to:', provider);
+            
+            // Store the selected provider to prevent flashing
+            const originalProvider = provider;
+            
+            // Disable the model dropdown while updating
+            if (modelSelect) {
+                modelSelect.disabled = true;
+                modelSelect.innerHTML = '<option value="">Updating...</option>';
+            }
             
             try {
                 // Update backend
-                await fetch('/api/update-config', {
+                const response = await fetch('/api/update-config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ai_provider: provider })
                 });
                 
-                // Reload config to update models
-                loadAIConfig();
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Provider update result:', result);
+                
+                // Wait a moment for backend to process
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+                // Reload config to update models, but preserve provider selection
+                await loadAIConfigWithProvider(originalProvider);
                 
             } catch (error) {
                 console.error('Error updating provider:', error);
-                alert('Failed to update AI provider');
+                alert('Failed to update AI provider: ' + error.message);
+                
+                // Restore original selection on error
+                if (providerSelect) {
+                    providerSelect.value = originalProvider;
+                }
+            } finally {
+                // Re-enable the model dropdown
+                if (modelSelect) {
+                    modelSelect.disabled = false;
+                }
             }
         }
         
-        // Handle model change
+        // Load AI configuration with specific provider preserved
+        async function loadAIConfigWithProvider(preserveProvider = null) {
+            try {
+                console.log('Loading AI configuration...');
+                const response = await fetch('/api/config');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const config = await response.json();
+                console.log('AI config loaded:', config);
+                
+                // Set provider (use preserved value if provided)
+                const providerSelect = document.getElementById('aiProvider');
+                if (providerSelect) {
+                    const providerToSet = preserveProvider || config.ai_provider;
+                    providerSelect.value = providerToSet;
+                }
+                
+                // Populate model dropdown
+                const providerForModels = preserveProvider || config.ai_provider;
+                populateModelDropdown(providerForModels, config.models, config.current_model);
+                
+            } catch (error) {
+                console.error('Error loading AI config:', error);
+                // Set default values if loading fails
+                const modelSelect = document.getElementById('aiModel');
+                if (modelSelect) {
+                    modelSelect.innerHTML = '<option value="">Error loading models</option>';
+                }
+            }
+        }
+          // Handle model change
         async function onModelChange() {
             const provider = document.getElementById('aiProvider').value;
             const model = document.getElementById('aiModel').value;
             
-            if (!model) return;
+            if (!model || model === 'Error loading models' || model === 'Updating...') {
+                return;
+            }
+            
+            console.log('Model changed to:', model, 'for provider:', provider);
             
             try {
                 const updateData = {};
@@ -665,15 +780,22 @@
                     updateData.ollama_model = model;
                 }
                 
-                await fetch('/api/update-config', {
+                const response = await fetch('/api/update-config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updateData)
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Model update result:', result);
+                
             } catch (error) {
                 console.error('Error updating model:', error);
-                alert('Failed to update model');
+                alert('Failed to update model: ' + error.message);
             }
         }
         
@@ -727,8 +849,7 @@
                 aiModelBadge.className = 'status-badge status-error';
             }
         }
-        
-        // Generate SQL
+          // Generate SQL
         async function generateSQL() {
             const srfText = document.getElementById('srfText').value.trim();
             const supportingInfo = document.getElementById('supportingInfo').value.trim();
@@ -736,6 +857,12 @@
             if (!srfText) {
                 alert('Please enter SRF content');
                 return;
+            }
+            
+            // Disable configuration during generation
+            const configPanel = document.querySelector('.status-panel:has(#aiProvider)');
+            if (configPanel) {
+                configPanel.classList.add('config-disabled');
             }
             
             // Show loading
@@ -756,8 +883,11 @@
                 
                 const result = await response.json();
                 
-                // Hide loading
+                // Hide loading and re-enable configuration
                 document.getElementById('loadingSection').style.display = 'none';
+                if (configPanel) {
+                    configPanel.classList.remove('config-disabled');
+                }
                 
                 if (result.success) {
                     showSuccessResult(result);
@@ -768,6 +898,12 @@
             } catch (error) {
                 console.error('Error generating SQL:', error);
                 document.getElementById('loadingSection').style.display = 'none';
+                
+                // Re-enable configuration on error
+                if (configPanel) {
+                    configPanel.classList.remove('config-disabled');
+                }
+                
                 showErrorResult({ error: 'Connection failed: ' + error.message });
             }
         }
@@ -826,8 +962,7 @@
             // Show result section
             document.getElementById('resultSection').style.display = 'block';
         }
-        
-        // Show error result
+          // Show error result
         function showErrorResult(result) {
             const resultTitle = document.getElementById('resultTitle');
             const sqlOutput = document.getElementById('sqlOutput');
@@ -837,8 +972,37 @@
             resultTitle.textContent = '❌ SQL Generation Failed';
             resultTitle.className = 'result-title result-error';
             
-            // Show error
-            sqlOutput.textContent = `Error: ${result.error || 'Unknown error occurred'}`;
+            // Show detailed error information
+            let errorMessage = `Error: ${result.error || 'Unknown error occurred'}`;
+            
+            if (result.details) {
+                errorMessage += `\n\nDetails: ${result.details}`;
+            }
+            
+            if (result.method) {
+                errorMessage += `\n\nMethod: ${result.method}`;
+            }
+            
+            // Add troubleshooting suggestions
+            errorMessage += '\n\n🔧 Troubleshooting Suggestions:';
+            
+            if (result.error && result.error.includes('API key')) {
+                errorMessage += '\n• Check your OpenAI API key in the .env file';
+                errorMessage += '\n• Ensure the API key is valid and has sufficient credits';
+            } else if (result.error && result.error.includes('Ollama')) {
+                errorMessage += '\n• Check if Ollama server is running';
+                errorMessage += '\n• Verify the Ollama server URL is correct';
+                errorMessage += '\n• Ensure the selected model is available';
+            } else if (result.error && result.error.includes('provider')) {
+                errorMessage += '\n• Check your AI_PROVIDER setting in .env file';
+                errorMessage += '\n• Use either "openai" or "ollama"';
+            } else {
+                errorMessage += '\n• Check your internet connection';
+                errorMessage += '\n• Try again in a few moments';
+                errorMessage += '\n• Contact support if the issue persists';
+            }
+            
+            sqlOutput.textContent = errorMessage;
             
             // Hide validation panel
             validationPanel.style.display = 'none';

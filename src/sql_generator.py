@@ -1,8 +1,8 @@
 """
-SQL Generator - AI-powered SQL generation with fallback to template-based generation
+SQL Generator - AI-powered SQL generation for commission reports
 
-Combines both AI and template approaches for robust SQL generation
-Supports OpenAI, Ollama, and Template-only modes
+Supports OpenAI and Ollama AI providers only
+No template fallback - shows proper errors when AI fails
 """
 
 import logging
@@ -10,7 +10,6 @@ import requests
 import json
 import os
 from typing import Dict, List, Optional
-from template_sql_generator import TemplateBasedSQLGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -26,23 +25,24 @@ class SQLGenerator:
             self.api_url = "https://api.openai.com/v1/chat/completions"
         elif self.ai_provider == "ollama":
             self.ollama_base_url = ollama_base_url or os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
-            self.model_name = model_name or os.getenv("OLLAMA_MODEL", "qwen3")
-        # else: template mode - no AI configuration needed
+            self.model_name = model_name or os.getenv("OLLAMA_MODEL", "qwen3")        # else: template mode - no AI configuration needed
         
-        # Initialize template generator for fallback
-        self.template_generator = TemplateBasedSQLGenerator()
-    
+        # Note: Template generator removed - no fallback mechanism
+        
     def generate_sql_query(self, formatted_context: str) -> Dict:
         """
         Generate SQL query based on configured AI provider
         """
         try:
-            # For template-only mode, skip AI generation
-            if self.ai_provider == "template":
-                logger.info("Using template-based generation (AI disabled)")
-                return self._generate_with_template(formatted_context)
+            # Only support AI providers - no template fallback
+            if self.ai_provider not in ["openai", "ollama"]:
+                return {
+                    'success': False,
+                    'error': f'Unsupported AI provider: {self.ai_provider}. Please use "openai" or "ollama".',
+                    'method': 'error'
+                }
             
-            # For AI providers (OpenAI/Ollama), try AI first, fallback to template
+            # Generate using AI providers only
             ai_result = self._generate_with_ai(formatted_context)
             
             if ai_result['success']:
@@ -51,14 +51,23 @@ class SQLGenerator:
                 ai_result['validation'] = validation
                 return ai_result
             else:
-                logger.warning(f"AI generation failed: {ai_result.get('error')}")
+                # Return the AI error directly - no fallback
+                logger.error(f"AI generation failed: {ai_result.get('error')}")
+                return {
+                    'success': False,
+                    'error': f"AI SQL generation failed: {ai_result.get('error', 'Unknown error')}",
+                    'method': ai_result.get('method', 'unknown'),
+                    'details': 'Please check your AI provider configuration and try again.'
+                }
         
         except Exception as e:
-            logger.warning(f"AI generation error: {str(e)}")
-        
-        # Fallback to template-based generation
-        logger.info("Falling back to template-based generation...")
-        return self._generate_with_template(formatted_context)
+            logger.error(f"SQL generation error: {str(e)}")
+            return {
+                'success': False,
+                'error': f"SQL generation failed: {str(e)}",
+                'method': 'error',
+                'details': 'An unexpected error occurred during SQL generation.'
+            }
     
     def _generate_with_ai(self, formatted_context: str) -> Dict:
         """Generate SQL using AI (OpenAI or Ollama)"""
@@ -202,38 +211,8 @@ class SQLGenerator:
         
         except Exception as e:
             logger.error(f"Ollama generation error: {str(e)}")
-            return {
-                'success': False,
+            return {                'success': False,
                 'error': str(e)
-            }
-    
-    def _generate_with_template(self, formatted_context: str) -> Dict:
-        """Generate SQL using template-based approach"""
-        try:
-            # Extract SRF text from context
-            srf_text = self._extract_srf_from_context(formatted_context)
-            
-            # Use template generator
-            result = self.template_generator.generate_sql_from_srf(srf_text)
-            
-            if result['success']:
-                # Normalize the key name for consistency
-                if 'generated_sql' in result:
-                    result['sql_query'] = result['generated_sql']
-                
-                # Add validation
-                validation = self.validate_generated_sql(result['sql_query'])
-                result['validation'] = validation
-                result['method'] = 'template-based'
-            
-            return result
-        
-        except Exception as e:
-            logger.error(f"Template generation error: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e),
-                'method': 'template-based'
             }
     
     def _check_ollama_availability(self) -> bool:
@@ -340,8 +319,7 @@ SQL Query:"""
         
         if 'WHERE' not in sql_upper:
             validation['warnings'].append('Consider adding WHERE clause for filtering')
-        
-        # Check for commission-specific elements
+          # Check for commission-specific elements
         if 'commission' not in sql_query.lower():
             validation['warnings'].append('Query might be missing commission calculation')
         
@@ -349,6 +327,3 @@ SQL Query:"""
             validation['warnings'].append('Query might be missing recharge data')
         
         return validation
-
-# Backward compatibility alias
-CommissionSQLGenerator = SQLGenerator

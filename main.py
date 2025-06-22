@@ -72,8 +72,7 @@ class CommissionAIAssistant:
             # Step 4: Initialize SQL Generator
             print("\n4️⃣ Initializing SQL generator...")
             from sql_generator import SQLGenerator
-            
-            # Initialize SQL generator based on configured AI provider
+              # Initialize SQL generator based on configured AI provider
             ai_provider = os.getenv("AI_PROVIDER", "openai").lower()
             
             if ai_provider == "openai":
@@ -88,8 +87,7 @@ class CommissionAIAssistant:
                         model_name=openai_model
                     )
                 else:
-                    print("   ⚠️  OpenAI selected but no API key found. Falling back to template generation...")
-                    self.sql_generator = SQLGenerator(ai_provider="template")
+                    raise Exception("OpenAI selected but no API key found. Please set OPENAI_API_KEY in .env file.")
             elif ai_provider == "ollama":
                 ollama_url = os.getenv("OLLAMA_API_BASE_URL", "http://192.168.105.58:11434")
                 ollama_model = os.getenv("OLLAMA_MODEL", "qwen3")
@@ -101,8 +99,7 @@ class CommissionAIAssistant:
                     ollama_base_url=ollama_url
                 )
             else:
-                print(f"   Unknown AI provider '{ai_provider}'. Using template-based generation...")
-                self.sql_generator = SQLGenerator(ai_provider="template")
+                raise Exception(f"Unsupported AI provider '{ai_provider}'. Please use 'openai' or 'ollama'.")
                 
             print("✅ SQL generator initialized!")
             

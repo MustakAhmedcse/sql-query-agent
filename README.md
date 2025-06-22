@@ -1,154 +1,176 @@
 # 🤖 Commission AI Assistant
 
-একটি RAG-based AI system যা MyBL Commission এর জন্য SRF input নিয়ে SQL query generate করে।
+An intelligent AI-powered system that generates SQL queries for MyBL Commission reports from SRF (Service Request Format) inputs using RAG (Retrieval-Augmented Generation) technology.
 
 ## 🎯 Project Overview
 
-এই system টি আপনার historical SRF-SQL pairs থেকে শিখে নতুন SRF দিলে automatically SQL query generate করবে। এটি high accuracy এর জন্য ChromaDB, Sentence Transformers এবং Ollama Qwen3 model ব্যবহার করে।
+This system learns from historical SRF-SQL pairs and automatically generates accurate SQL queries for new SRF inputs. It uses advanced AI technologies including ChromaDB for vector storage, Sentence Transformers for embeddings, and supports both OpenAI and Ollama AI providers.
+
+## ✨ Key Features
+
+- **AI-Powered SQL Generation**: Supports OpenAI GPT and Ollama models
+- **RAG Technology**: Retrieves similar examples for better context
+- **File Upload Support**: Process SRF documents (.doc/.docx) and Excel files
+- **Web Interface**: User-friendly web application
+- **Real-time Processing**: Fast SQL generation with timing metrics
+- **Error Handling**: Clear error messages with troubleshooting guidance
 
 ## 📁 Project Structure
 
 ```
 Commission Agent/
-├── data/
-│   ├── training_data/      # আপনার SRF-SQL pairs
-│   ├── embeddings/         # ChromaDB storage
-│   └── templates/          # SQL templates
 ├── src/
-│   ├── data_processor.py   # Data processing
-│   ├── embedding_manager.py # Embedding management
-│   ├── rag_system.py       # RAG implementation
-│   ├── sql_generator.py    # SQL generation
-│   ├── validator.py        # Query validation
-│   └── main.py            # Main application
-├── config/
-│   ├── settings.py        # Configuration
-│   └── .env              # Environment variables
+│   ├── data_processor.py      # Training data processing
+│   ├── embedding_manager.py   # Vector embeddings management
+│   ├── rag_system.py         # RAG implementation
+│   ├── sql_generator.py      # AI-powered SQL generation
+│   └── file_processor.py     # File upload processing
 ├── web/
-│   ├── app.py            # Web interface
-│   └── templates/        # HTML templates
-├── requirements.txt      # Dependencies
-├── README.md            # This file
-└── run.py              # Application runner
+│   ├── app.py               # FastAPI web application
+│   └── templates/
+│       └── index.html       # Web interface
+├── config/
+│   └── settings.py          # Application configuration
+├── data/
+│   ├── training_data/       # Processed training data
+│   └── embeddings/          # ChromaDB vector storage
+├── tests/                   # Test scripts
+├── main.py                  # Main application entry point
+├── run.py                   # Application runner
+├── requirements.txt         # Python dependencies
+└── .env                     # Environment configuration
 ```
 
 ## 🚀 Quick Start
 
 ### 1. Environment Setup
 ```bash
-# Virtual environment তৈরি করুন
+# Create virtual environment
 python -m venv commission_env
 
-# Activate করুন (Windows)
+# Activate environment (Windows)
 commission_env\Scripts\activate
 
-# Dependencies install করুন
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### 2. Configuration
+Create a `.env` file in the project root:
 ```bash
-# .env file তৈরি করুন
+# AI Provider Configuration
+AI_PROVIDER=openai                    # Options: openai, ollama
+
+# OpenAI Configuration (if using OpenAI)
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_MODELS=gpt-4o,gpt-4o-mini,gpt-4-turbo,gpt-4,gpt-3.5-turbo
+
+# Ollama Configuration (if using Ollama)
 OLLAMA_API_BASE_URL=http://192.168.105.58:11434
 OLLAMA_MODEL=qwen3
+OLLAMA_MODELS=qwen3:4b-q8_0,llama3:8b,llama3:70b,codellama:7b,mistral:7b
+
+# Embedding Configuration
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 CHROMA_DB_PATH=./data/embeddings
+
+# RAG Settings
+CONFIDENCE_THRESHOLD=0.7
+MAX_RETRIEVAL_RESULTS=5
 ```
 
-### 3. Data Preparation
+### 3. Initialize the System
 ```bash
-# আপনার existing data load করুন
-python src/data_processor.py
-
-# Embeddings generate করুন
-python src/embedding_manager.py
+# Run the main application to initialize
+python main.py
 ```
 
-### 4. Run Application
+### 4. Start Web Application
 ```bash
-# Web interface চালান
+# Start the web interface
 python run.py
+# OR
+python -m web.app
 ```
 
-আপনার browser এ `http://localhost:8000` এ যান।
+Open your browser and go to `http://localhost:8000`
 
 ## 🔧 How It Works
 
-1. **Data Processing**: আপনার SRF-SQL pairs process করে
-2. **Embedding Generation**: ChromaDB তে semantic embeddings store করে
-3. **RAG Retrieval**: নতুন SRF এর জন্য similar examples খুঁজে
-4. **SQL Generation**: Qwen3 model দিয়ে SQL query generate করে
-5. **Validation**: Generated query validate করে
-6. **Learning**: User feedback থেকে শিখে
+1. **AI Provider Selection**: Choose between OpenAI GPT models or Ollama local models
+2. **RAG Retrieval**: System finds similar SRF examples from training data
+3. **Context Building**: Combines retrieved examples with your input
+4. **AI Generation**: Uses selected AI model to generate SQL query
+5. **Validation**: Validates the generated SQL for syntax and logic
+6. **Error Handling**: Shows clear error messages if generation fails
 
 ## 📝 Usage
 
-### SRF Input করার জন্য:
-1. Web interface এ SRF text paste করুন
-2. Supporting table format specify করুন
-3. "Generate SQL" button click করুন
-4. Generated query review করুন
-5. Feedback দিন accuracy improve করার জন্য
+### Web Interface:
+1. **Select AI Provider**: Choose OpenAI or Ollama from the dropdown
+2. **Select Model**: Pick specific model for your provider
+3. **Input SRF**: Either type directly or upload SRF documents (.doc/.docx)
+4. **Supporting Info**: Optionally upload Excel/CSV files or add manual info
+5. **Generate SQL**: Click the generate button
+6. **Review Results**: Check the generated SQL and validation results
 
-### API Usage:
-```python
-import requests
+### File Upload Support:
+- **SRF Documents**: Upload .doc or .docx files for automatic text extraction
+- **Supporting Data**: Upload .xlsx, .xls, or .csv files for additional context
 
-response = requests.post("http://localhost:8000/generate-sql", 
-    json={
-        "srf_text": "আপনার SRF content",
-        "supporting_format": "table structure"
-    })
+## 🧪 Testing
 
-sql_query = response.json()["generated_sql"]
+Run the test scripts in the `tests/` folder:
+```bash
+# Test AI provider configuration
+python tests/test_ai_provider.py
+
+# Test without template fallback
+python tests/test_no_template_fallback.py
 ```
 
-## 🎯 Features
+## ⚙️ AI Provider Setup
 
-- ✅ High accuracy SQL generation
-- ✅ Historical data থেকে learning
-- ✅ User feedback integration
-- ✅ Query validation
-- ✅ Web-based interface
-- ✅ API endpoints
-- ✅ Continuous improvement
+### For OpenAI:
+1. Get API key from OpenAI
+2. Set `AI_PROVIDER=openai` in .env
+3. Add your `OPENAI_API_KEY` to .env
 
-## 📊 Accuracy Improvement
+### For Ollama:
+1. Install and run Ollama server
+2. Set `AI_PROVIDER=ollama` in .env
+3. Configure `OLLAMA_API_BASE_URL` in .env
 
-System টি এই strategies ব্যবহার করে high accuracy ensure করে:
+## 🚨 Error Handling
 
-1. **Multi-layered Retrieval**: Semantic + keyword + pattern matching
-2. **Template-based Generation**: Common patterns extract করে
-3. **Validation Pipeline**: Multiple validation layers
-4. **Continuous Learning**: User feedback integration
-5. **Business Logic Encoding**: Domain-specific rules
+The system provides clear error messages for:
+- Missing or invalid API keys
+- Unreachable AI servers
+- Network connectivity issues
+- Invalid configuration settings
+- Unsupported file formats
 
-## 🔄 Training Process
+No template fallbacks - you get honest feedback about AI capabilities.
 
-1. আপনার existing SRF-SQL pairs load করুন
-2. Data preprocessing ও cleaning
-3. Embedding generation ও storage
-4. Pattern extraction ও template creation
-5. Model fine-tuning (optional)
+## 📊 Features
 
-## 🐛 Troubleshooting
+- ✅ **Dual AI Support**: OpenAI GPT and Ollama models
+- ✅ **File Processing**: SRF documents and Excel/CSV uploads
+- ✅ **Real-time Generation**: Fast SQL generation with timing metrics
+- ✅ **Quality Metrics**: Context quality and confidence scoring
+- ✅ **Validation**: SQL syntax and logic validation
+- ✅ **Error Transparency**: Clear error messages without hidden fallbacks
+- ✅ **Web Interface**: Professional, user-friendly design
 
-### Common Issues:
-- **Ollama connection error**: Check OLLAMA_API_BASE_URL
-- **ChromaDB issues**: Delete embeddings folder and regenerate
-- **Low accuracy**: Add more training data or adjust retrieval parameters
+## 🎯 Perfect for POCs
 
-## 🤝 Contributing
-
-1. নতুন SRF-SQL pairs add করুন training data তে
-2. Business logic improve করুন
-3. Validation rules enhance করুন
-4. Bug reports ও feedback দিন
+This system is designed for commission POC projects where:
+- Multiple commission types need to be handled
+- AI transparency is important
+- Clear error feedback is required
+- No assumptions about template coverage should be made
 
 ## 📞 Support
 
-কোন সমস্যা হলে documentation check করুন অথবা issue create করুন।
-
----
-
-**Note**: এই system টি আপনার specific MyBL Commission requirements এর জন্য তৈরি। High accuracy এর জন্য আপনার historical data quality important।
+For issues or questions, check the error messages in the web interface - they include troubleshooting guidance for common problems.
