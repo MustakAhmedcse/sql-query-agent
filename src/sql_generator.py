@@ -241,6 +241,17 @@ class SQLGenerator:
                     7. Include proper date filtering
                     8. Use appropriate joins and aggregations
 
+                    CRITICAL RULES:
+                    1. COPY the structure of the example SQL EXACTLY - including all temporary tables
+                    2. Follow the precise format: SELECT counts, table creation, WITH clause and table merges
+                    3. Keep all row count comments but use "0" for all counts (e.g., "-- 0 Rows")
+                    4. Use Oracle-specific syntax including PURGE and hints like /*+ PARALLEL(10)*/
+                    5. For table names, use EXACT naming pattern from example (changing only date parts):
+                        - TEMP_FOR_MYBL_REG_16_28_FEB25 → TEMP_FOR_MYBL_REG_[start_day]_[end_day]_[month][year]
+                        - TEMP_FOR_DET2_MYBL_16_28FEB25 → TEMP_FOR_DET2_MYBL_[start_day]_[end_day][month][year]
+                        - MY_BL_RECHARGE_MONTHLY_28FEB25 → MY_BL_RECHARGE_MONTHLY_[end_day][month][year]
+                    6. Keep all commented SQL sections identical to example
+                    7. NEVER simplify or optimize the structure - match the example exactly  
                     Generate ONLY the SQL query with comments. Do not include explanations outside the SQL.
 
                     SQL Query:"""
