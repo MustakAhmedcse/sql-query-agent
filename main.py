@@ -50,14 +50,16 @@ class CommissionAIAssistant:
                 print("✅ Data processing completed!")
             else:
                 print("⚠️  No training data provided, using existing processed data")
-            
-            # Step 2: Setup Embeddings
+              # Step 2: Setup Embeddings (smart detection)
             print("\n2️⃣ Setting up embeddings...")
             from embedding_manager import setup_embeddings_from_processed_data
             processed_file = "./data/training_data/processed_training_data.json"
             
             if os.path.exists(processed_file):
-                self.embedding_manager = setup_embeddings_from_processed_data(processed_file)
+                # Web interface এ সবসময় existing embedding skip করবে
+                # নতুন ট্রেনিং ডাটা আপলোড করলে শুধু তখন force_recreate=True
+                force_recreate = bool(jsonl_file_path)  # নতুন ডাটা থাকলে recreate
+                self.embedding_manager = setup_embeddings_from_processed_data(processed_file, force_recreate=force_recreate)
                 if not self.embedding_manager:
                     raise Exception("Embedding setup failed")
                 print("✅ Embeddings setup completed!")

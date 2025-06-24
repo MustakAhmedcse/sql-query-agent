@@ -44,12 +44,21 @@ class Settings:
     # =============================================================================
     # ChromaDB Configuration - use absolute path
     CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", str(BASE_DIR / "data" / "embeddings"))
-    
-    # =============================================================================
+      # =============================================================================
     # RAG CONFIGURATION
     # =============================================================================
-    MAX_RETRIEVAL_RESULTS = int(os.getenv("MAX_RETRIEVAL_RESULTS", "5"))
+    MAX_RETRIEVAL_RESULTS = int(os.getenv("MAX_RETRIEVAL_RESULTS", "3"))
     CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.7"))
+    
+    # Enhanced RAG settings
+    RAG_BATCH_SIZE = int(os.getenv("RAG_BATCH_SIZE", "100"))
+    RAG_CACHE_SIZE = int(os.getenv("RAG_CACHE_SIZE", "100"))
+    RAG_RESOURCE_LEVEL = os.getenv("RAG_RESOURCE_LEVEL", "medium").lower()  # low, medium, high
+    
+    # ChromaDB HNSW Configuration
+    HNSW_M = int(os.getenv("HNSW_M", "16"))
+    HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "200"))
+    HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "100"))
     
     # =============================================================================
     # DATA PATHS

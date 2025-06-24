@@ -49,13 +49,13 @@ def setup_data():
         if result:
             print("✅ Training data setup completed!")
             print(f"Processed {len(result)} SRF-SQL pairs")
-            
-            # Setup embeddings
+              # Setup embeddings with intelligent detection
             print("\n🔧 Setting up embeddings...")
             from embedding_manager import setup_embeddings_from_processed_data
             
             processed_file = "./data/training_data/processed_training_data.json"
-            manager = setup_embeddings_from_processed_data(processed_file)
+            # Setup command সবসময় force recreate করবে (নতুন ট্রেনিং ডাটার জন্য)
+            manager = setup_embeddings_from_processed_data(processed_file, force_recreate=True)
             
             if manager:
                 print("✅ Embeddings setup completed!")
