@@ -84,6 +84,8 @@ MAX_RETRIEVAL_RESULTS=5
 ```bash
 # Run the main application to initialize
 python main.py
+
+
 ```
 
 ### 4. Start Web Application
@@ -92,6 +94,8 @@ python main.py
 python run.py
 # OR
 python -m web.app
+# OR
+python run.py cli
 ```
 
 Open your browser and go to `http://localhost:8000`
