@@ -147,13 +147,29 @@ class DataProcessor:
         commission_type = None
         
         try:
-            # রিপোর্ট টাইটেল এক্সট্র্যাক্ট করি
-            report_title_pattern = r"Report Title:\s*(.+?)(?:\r|\n)"
-            report_title_match = re.search(report_title_pattern, srf_text)
+            # Enhanced রিপোর্ট টাইটেল এক্সট্র্যাক্ট করি
+            # Multiple patterns try করি
+            report_title_patterns = [
+                r"Report Title:\s*([^\u0007\r\n]+?)(?:\s*\u0007|\s*Report Description|$)",  # Unicode aware
+                r"Report Title:\s*(.+?)(?:\s*\u0007)",  # Specifically for \u0007
+                r"Report Title:\s*(.+?)(?:\r|\n|$)",    # Original pattern
+                r"Report Title:\s*([^\\]+?)(?:\s*\\)",  # For escaped characters
+                r"Report Title:\s*(.+?)(?=\s+Report Description|\s+\u0007|$)"  # Lookahead pattern
+            ]
             
-            if report_title_match:
-                commission_name = report_title_match.group(1).strip()
-                
+            commission_name = None
+            for pattern in report_title_patterns:
+                report_title_match = re.search(pattern, srf_text, re.IGNORECASE | re.DOTALL)
+                if report_title_match:
+                    commission_name = report_title_match.group(1).strip()
+                    # Clean up any remaining special characters
+                    commission_name = re.sub(r'[\u0000-\u001F\u007F-\u009F]', '', commission_name)
+                    commission_name = commission_name.strip()
+                    
+                    if commission_name:  # Valid name found
+                        break
+            
+            if commission_name:
                 # উন্নত ফাংশন ব্যবহার করে কমিশন টাইপ এক্সট্র্যাক্ট করি
                 commission_type = self._extract_commission_type(commission_name)
                 
@@ -164,7 +180,7 @@ class DataProcessor:
             "commission_name": commission_name or "unknown",
             "commission_type": commission_type or "unknown"
         }
-    
+
     def _extract_commission_type(self, commission_name):
         """
         বিভিন্ন ফরম্যাটের কমিশন নাম থেকে কমিশন টাইপ এক্সট্র্যাক্ট করে
