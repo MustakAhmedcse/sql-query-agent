@@ -9,6 +9,7 @@ import logging
 import requests
 import json
 import os
+import re
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,8 @@ class SQLGenerator:
             
             if response.status_code == 200:
                 result = response.json()
-                sql_query = self._extract_sql_from_response(result['choices'][0]['message']['content'])
+                sql_query = result['choices'][0]['message']['content']
+                #sql_query = self._extract_sql_from_response(cleaned)
                 
                 if sql_query:
                     return {
@@ -190,7 +192,14 @@ class SQLGenerator:
             
             if response.status_code == 200:
                 result = response.json()
-                sql_query = self._extract_sql_from_response(result.get('response', ''))
+                response = result.get('response', '')
+                sql_query = re.sub(
+                            r'<think>.*?</think>\s*',
+                            '',
+                            response,
+                            flags=re.DOTALL
+                        )
+                #sql_query = self._extract_sql_from_response(cleaned_response)
                 
                 if sql_query:
                     return {

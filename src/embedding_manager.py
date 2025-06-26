@@ -115,7 +115,8 @@ class EmbeddingManager:
                         "srf_length": item['srf_length'],
                         "sql_length": item['sql_length'],
                         "has_supporting_table": item.get('has_supporting_table', False),
-                        "sub_category": item.get('sub_category', 'other')
+                        "sub_category": item.get('sub_category', 'other'),
+                        "sql_query": item.get('sql_query', ''),
                     }
                     
                     documents_batch.append(srf_text)
