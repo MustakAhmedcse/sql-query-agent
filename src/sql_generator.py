@@ -122,7 +122,7 @@ class SQLGenerator:
                         }
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 2000
+                    "max_tokens": 3000
                 },
                 timeout=30
             )
@@ -184,7 +184,7 @@ class SQLGenerator:
                     "options": {
                         "temperature": 0.1,
                         "top_p": 0.9,
-                        "num_predict": 2000
+                        "num_predict": 10000
                     }
                 },
                 timeout=120
