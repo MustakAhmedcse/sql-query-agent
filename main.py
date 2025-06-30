@@ -114,7 +114,7 @@ class CommissionAIAssistant:
             print(f"❌ Initialization failed: {str(e)}")
             return False
     
-    def generate_sql_for_srf(self, srf_text, supporting_info=""):
+    def generate_sql_for_srf(self, srf_text):
         """
         SRF text থেকে SQL query generate করি
         """
@@ -139,8 +139,6 @@ class CommissionAIAssistant:
             print("2️⃣ Preparing context for AI...")
             formatted_context = self.rag_system.format_context_for_llm(context)
             
-            if supporting_info:
-                formatted_context += f"\n\nSUPPORTING INFORMATION:\n{supporting_info}\n"
             
             # Step 3: Generate SQL
             print("3️⃣ Generating SQL query...")
@@ -241,10 +239,9 @@ def run_cli_interface():
                 print("❌ Empty SRF text!")
                 continue
             
-            supporting_info = input("\n📋 Enter supporting information (optional): ").strip()
             
             # Generate SQL
-            result = assistant.generate_sql_for_srf(srf_text, supporting_info)
+            result = assistant.generate_sql_for_srf(srf_text)
             
             print("\n" + "="*50)
             print("📊 RESULTS:")

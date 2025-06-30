@@ -40,7 +40,6 @@ assistant = None
 # Pydantic models
 class SRFRequest(BaseModel):
     srf_text: str
-    supporting_info: str = ""
 
 class SQLResponse(BaseModel):
     success: bool
@@ -130,8 +129,7 @@ async def generate_sql(request: SRFRequest):
         start_time = time.time()
         
         result = assistant.generate_sql_for_srf(
-            request.srf_text, 
-            request.supporting_info
+            request.srf_text
         )
         
         end_time = time.time()
@@ -305,54 +303,6 @@ async def upload_srf_file(file: UploadFile = File(...)):
                     text=result.get('text', ''),
                     file_type='document'
                 )
-        else:
-            return FileUploadResponse(
-                success=False,
-                error=result.get('error', 'Unknown error processing file')
-            )
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/upload-supporting", response_model=FileUploadResponse)
-async def upload_supporting_file(file: UploadFile = File(...)):
-    """Upload supporting information file (.xlsx/.xls/.csv)"""
-    try:
-        # Validate file type
-        if not file.filename.lower().endswith(('.xlsx', '.xls', '.csv')):
-            raise HTTPException(
-                status_code=400,
-                detail="Only .xlsx, .xls, and .csv files are supported for supporting information"
-            )
-        
-        # Read file content
-        file_content = await file.read()
-        
-        # Process file
-        result = FileProcessor.process_uploaded_file(file.filename, file_content)
-        
-        if result['success']:
-            if result.get('type') == 'excel':
-                return FileUploadResponse(
-                    success=True,
-                    file_type='excel',
-                    sheet_names=result.get('sheet_names', []),
-                    requires_sheet_selection=result.get('requires_sheet_selection', False)
-                )
-            elif result.get('type') == 'csv':
-                # Process CSV immediately
-                csv_result = FileProcessor.extract_data_from_csv(file_content, max_rows=5)
-                if csv_result['success']:
-                    return FileUploadResponse(
-                        success=True,
-                        text=csv_result.get('text', ''),
-                        file_type='csv'
-                    )
-                else:
-                    return FileUploadResponse(
-                        success=False,
-                        error=csv_result.get('error', 'Error processing CSV file')
-                    )
         else:
             return FileUploadResponse(
                 success=False,

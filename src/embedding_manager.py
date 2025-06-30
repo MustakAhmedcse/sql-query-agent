@@ -14,6 +14,8 @@ from functools import lru_cache
 from config.settings import settings
 import concurrent.futures
 
+from data_processor import DataProcessor
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -172,9 +174,15 @@ class EmbeddingManager:
         Enhanced search with metadata filtering and performance optimization
         """
         try:
+
             # Query embedding তৈরি করি
             query_embedding = self.embedding_model.encode([query_srf])
+
+            processor = DataProcessor()
+            meta_data = processor.extract_commission_metadata(query_srf)
             
+            filter_metadata = filter_metadata or {}
+            filter_metadata['commission_type'] = meta_data.get('commission_type', 'unknown')
             # Build where clause for filtering
             where_clause = None
             if filter_metadata:

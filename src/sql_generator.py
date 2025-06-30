@@ -124,7 +124,7 @@ class SQLGenerator:
                     "temperature": 0.1,
                     "max_tokens": 3000
                 },
-                timeout=30
+                timeout=120
             )
             
             if response.status_code == 200:

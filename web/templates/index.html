@@ -533,30 +533,6 @@
                         required></textarea>
                 </div>
                 
-                <div class="input-group">
-                    <label for="supportingInfo">Supporting Information (Optional)</label>
-                    <div class="file-upload-container">
-                        <div class="file-upload-section">
-                            <input type="file" id="supportingFileInput" accept=".xlsx,.xls,.csv" onchange="uploadSupportingFile()" style="display: none;">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('supportingFileInput').click()">
-                                📊 Upload Excel/CSV (.xlsx/.xls/.csv)
-                            </button>
-                            <span id="supportingFileName" class="file-name"></span>
-                        </div>
-                        <div id="sheetSelector" class="sheet-selector" style="display: none;">
-                            <label for="sheetSelect">Select Sheet:</label>
-                            <select id="sheetSelect" onchange="extractExcelData()">
-                                <option value="">Choose a sheet...</option>
-                            </select>
-                        </div>
-                        <div class="or-divider">OR</div>
-                    </div>
-                    <textarea 
-                        id="supportingInfo" 
-                        rows="4" 
-                        placeholder="Enter any additional supporting information like table structures, specific requirements, etc."></textarea>
-                </div>
-                
                 <div style="text-align: center;">
                     <button class="btn btn-primary" onclick="generateSQL()">
                         🚀 Generate SQL Query
@@ -852,7 +828,6 @@
           // Generate SQL
         async function generateSQL() {
             const srfText = document.getElementById('srfText').value.trim();
-            const supportingInfo = document.getElementById('supportingInfo').value.trim();
             
             if (!srfText) {
                 alert('Please enter SRF content');
@@ -876,8 +851,7 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        srf_text: srfText,
-                        supporting_info: supportingInfo
+                        srf_text: srfText
                     })
                 });
                 
@@ -1074,104 +1048,6 @@
                 fileName.textContent = `❌ ${file.name} - Error`;
                 fileName.className = 'file-name error';
                 showFileUploadStatus('srf', 'error', 'Upload failed: ' + error.message);
-            }
-        }
-        
-        async function uploadSupportingFile() {
-            const fileInput = document.getElementById('supportingFileInput');
-            const fileName = document.getElementById('supportingFileName');
-            const sheetSelector = document.getElementById('sheetSelector');
-            const file = fileInput.files[0];
-            
-            if (!file) return;
-            
-            fileName.textContent = 'Uploading...';
-            fileName.className = 'file-name';
-            sheetSelector.style.display = 'none';
-            
-            // Store the file for later use
-            currentSupportingFile = file;
-            
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                
-                const response = await fetch('/api/upload-supporting', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    fileName.textContent = `✅ ${file.name}`;
-                    fileName.className = 'file-name success';
-                    
-                    if (result.requires_sheet_selection) {
-                        // Show sheet selector for Excel files
-                        populateSheetSelector(result.sheet_names);
-                        sheetSelector.style.display = 'block';
-                        showFileUploadStatus('supporting', 'success', 'File uploaded. Please select a sheet to extract data.');
-                    } else {
-                        // CSV file - data already extracted
-                        document.getElementById('supportingInfo').value = result.text;
-                        showFileUploadStatus('supporting', 'success', 'Supporting information extracted successfully!');
-                    }
-                } else {
-                    fileName.textContent = `❌ ${file.name} - Error`;
-                    fileName.className = 'file-name error';
-                    showFileUploadStatus('supporting', 'error', result.error || 'Failed to process file');
-                }
-                
-            } catch (error) {
-                fileName.textContent = `❌ ${file.name} - Error`;
-                fileName.className = 'file-name error';
-                showFileUploadStatus('supporting', 'error', 'Upload failed: ' + error.message);
-            }
-        }
-        
-        function populateSheetSelector(sheetNames) {
-            const select = document.getElementById('sheetSelect');
-            select.innerHTML = '<option value="">Choose a sheet...</option>';
-            
-            sheetNames.forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
-                select.appendChild(option);
-            });
-        }
-        
-        async function extractExcelData() {
-            const sheetSelect = document.getElementById('sheetSelect');
-            const selectedSheet = sheetSelect.value;
-            
-            if (!selectedSheet || !currentSupportingFile) return;
-            
-            try {
-                const formData = new FormData();
-                formData.append('file', currentSupportingFile);
-                formData.append('sheet_name', selectedSheet);
-                
-                const response = await fetch('/api/extract-excel-data', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    document.getElementById('supportingInfo').value = result.text;
-                    showFileUploadStatus('supporting', 'success', 
-                        `Data extracted from sheet "${selectedSheet}". ` +
-                        `Found ${result.info?.rows || 0} rows and ${result.info?.columns || 0} columns.`
-                    );
-                } else {
-                    showFileUploadStatus('supporting', 'error', result.error || 'Failed to extract data');
-                }
-                
-            } catch (error) {
-                showFileUploadStatus('supporting', 'error', 'Extraction failed: ' + error.message);
             }
         }
         

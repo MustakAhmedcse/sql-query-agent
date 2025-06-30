@@ -38,7 +38,7 @@ class RAGSystem:
                 'query_srf': query_srf,
                 'total_similar_found': len(similar_items),
                 'high_confidence_count': len(high_confidence_items),
-                'similar_examples': high_confidence_items[:3],  # Top 3 similar examples
+                'similar_examples': high_confidence_items[:1],  # Top 3 similar examples
                 'all_similar': similar_items,
                 'confidence_threshold': self.confidence_threshold
             }
@@ -90,11 +90,11 @@ class RAGSystem:
         # Instructions add করি
         formatted_context += """
             INSTRUCTIONS:
-            1. Analyze the similar examples above
-            2. Understand the Target SRF requirements  
-            3. Generate accurate SQL query by observing similar patterns
-            4. Maintain commission business logic
-            5. Use proper table names, columns and conditions
+            1. Ensure generated query matches the exact format of examples
+            2. Analyze the Target SRF and match it with similar examples
+            3. Understand the Target SRF requirements  
+            5. Maintain commission business logic
+            6. Generate exact SQL format shown in the examples above (line-by-line, comments, table names, CTE usage, formatting).
 
             Generate SQL Query for the Target SRF:
             """
