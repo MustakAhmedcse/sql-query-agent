@@ -38,7 +38,7 @@ class RAGSystem:
                 'query_srf': query_srf,
                 'total_similar_found': len(similar_items),
                 'high_confidence_count': len(high_confidence_items),
-                'similar_examples': high_confidence_items[:1],  # Top 3 similar examples
+                'similar_examples': high_confidence_items,
                 'all_similar': similar_items,
                 'confidence_threshold': self.confidence_threshold
             }
@@ -73,13 +73,15 @@ class RAGSystem:
             """
         
         # Similar examples add করি
-        for i, example in enumerate(similar_examples, 1):
+        #for i, example in enumerate(similar_examples, 1):
+        if(len(similar_examples) >  0):
+            example = similar_examples[0]  # Assuming we only use the first example for simplicity
             similarity_score = example.get('similarity_score', 0)
             srf_text = example.get('srf_text', '').replace('SRF: ', '')
             sql_query = example.get('sql_query', '')
-            
+                
             formatted_context += f"""
-            --- Example {i} (Similarity: {similarity_score:.2f}) ---
+            --- Example {1} (Similarity: {similarity_score:.2f}) ---
             SRF: {srf_text}
 
             SQL Query:
