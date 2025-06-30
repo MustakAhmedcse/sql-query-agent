@@ -52,7 +52,6 @@ class DataProcessor:
                 # Basic cleaning
                 srf_text = self._clean_text(item.get('srf', ''))
                 sql_query = self._clean_sql(item.get('sql', ''))
-                supporting_table = item.get('supporting_table', '')
                 
                 # Skip empty data
                 if not srf_text or not sql_query:
@@ -65,7 +64,6 @@ class DataProcessor:
                     'id': len(processed_data) + 1,
                     'srf_text': srf_text,
                     'sql_query': sql_query,
-                    'supporting_table': supporting_table,
                     'srf_length': len(srf_text),
                     'sql_length': len(sql_query),
                     'commission_name': metadata['commission_name'],
@@ -252,46 +250,8 @@ class DataProcessor:
             else:
                 item['sub_category'] = 'other'
                 
-            # Extract supporting tables info
-            if item.get('supporting_table'):
-                item['has_supporting_table'] = True
-                item['table_info'] = self._extract_table_info(item['supporting_table'])
-            else:
-                item['has_supporting_table'] = False
-                item['table_info'] = {}
         
         return processed_data
-    
-    def _extract_table_info(self, supporting_table):
-        """Extract supporting tables and organize structured data"""
-        table_info = {
-            'columns': [],
-            'row_count': 0,
-            'has_deno': False,
-            'has_commission': False
-        }
-        
-        try:
-            # Parse CSV data
-            import io
-            import pandas as pd
-            csv_data = io.StringIO(supporting_table)
-            df = pd.read_csv(csv_data)
-            
-            # Extract key columns
-            table_info['columns'] = df.columns.tolist()
-            table_info['row_count'] = len(df)
-            
-            # Check for important columns
-            column_names = [col.upper() for col in df.columns]
-            table_info['has_deno'] = any('DENO' in col for col in column_names)
-            table_info['has_commission'] = any('COMMISSION' in col for col in column_names)
-            
-        except Exception as e:
-            logger.warning(f"Could not parse supporting table: {e}")
-            
-        return table_info
-
 # Usage example function
 def process_your_data(jsonl_file_path):
     """
