@@ -236,11 +236,6 @@ class SQLGenerator:
     def _prepare_ai_prompt(self, formatted_context: str) -> str:
         """Prepare prompt for AI model"""
         current_month = datetime.datetime.now().strftime("%b_%y")
-        # return f"""Here is an old SRF and sql query with detail comments for your referenc-
-        #             {formatted_context}
-        #             Replace the PUBLISH_CYCLE with {current_month}
-        #             Genated SQL Query for new SRF:
-        #             """
        
         return f"""You are an Oracle SQL expert for commission calculation. Follow these instructions EXACTLY:
 
@@ -267,21 +262,6 @@ class SQLGenerator:
                     - Remove descriptive comments but keep structural comments
 
                     Generated SQL Query:"""
-
-        # return f"""You are an expert Oracle SQL developer. Your task is to generate a new SQL query based on a new SRF.
-
-        #             Follow these steps precisely:
-        #             1.  Read the `<REFERENCE_INSTRUCTIONS>`. These are the rules you MUST follow.
-        #             2.  Analyze the `<REFERENCE_SQL_CODE>` and `<REFERENCE_SRF>` to understand the logic.
-        #             3.  Apply the logic and rules to the `<NEW_SRF>` to generate the final SQL query.
-        #             4.  **CRITICAL:** The generated query must be clean, following all rules from `<REFERENCE_INSTRUCTIONS>`, such as removing descriptive comments.
-        #             5.  Replace `BASE_CYCLE` with the month from the new SRF's end date.
-        #             6.  Replace `PUBLISH_CYCLE` with `{current_month}`.
-
-        #             Here is the context:
-        #             {formatted_context}
-
-        #             Generated SQL Query:"""
     
     def _extract_sql_from_response(self, response_text: str) -> Optional[str]:
         """Extract SQL query from AI response"""

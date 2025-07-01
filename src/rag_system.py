@@ -74,64 +74,29 @@ class RAGSystem:
             sql_query = example.get('sql_query', '')
                 
             formatted_context += f"""
-           
-            ---Old SRF:  
-            {srf_text}
 
-            ---Old SQL Query with detail comments with step by step instruction: 
+            <REFERENCE_SRF>
+            {srf_text}
+            </REFERENCE_SRF>
+
+            <REFERENCE_INSTRUCTIONS>
+             {Reference_Instructions}
+            </REFERENCE_INSTRUCTIONS>
+
+            <REFERENCE_SQL_CODE>
             {sql_query}
 
-            ---New SRF (for which SQL query needs to be generated): 
+            {Report_Setup_Query}
+            </REFERENCE_SQL_CODE>
+
+            <NEW_SRF> -- (for which SQL query needs to be generated)
             {query_srf}
+            </NEW_SRF>
 
             """
         
         
         return formatted_context
-    
-    # def format_context_for_llm(self, context: Dict) -> str:
-    #         """
-    #         LLM এর জন্য context format করি এবং নির্দেশ ও কোড আলাদা করি।
-    #         """
-    #         query_srf = context.get('query_srf', '')
-    #         similar_examples = context.get('similar_examples', [])
-            
-    #         formatted_context = ""
-            
-    #         if similar_examples:
-    #             example = similar_examples[0]
-    #             srf_text = example.get('srf_text', '')
-    #             sql_query_full = example.get('sql_query', '')
-
-    #             # STEP 0 (নির্দেশ) এবং বাকি SQL কোড আলাদা করা
-    #             instructions = ""
-    #             sql_code = ""
-    #             if "----- STEP 0:" in sql_query_full:
-    #                 parts = sql_query_full.split("----- STEP 1:")
-    #                 instructions = parts[0]
-    #                 if len(parts) > 1:
-    #                     sql_code = "----- STEP 1:" + parts[1] # STEP 1 থেকে শুরু
-    #             else:
-    #                 sql_code = sql_query_full
-
-    #             # XML ট্যাগ দিয়ে সুন্দরভাবে সাজানো
-    #             formatted_context = f"""
-    # <REFERENCE_SRF>
-    # {srf_text}
-    # </REFERENCE_SRF>
-
-    # <REFERENCE_INSTRUCTIONS>
-    # {instructions}
-    # </REFERENCE_INSTRUCTIONS>
-
-    # <REFERENCE_SQL_CODE>
-    # {sql_code}
-    # </REFERENCE_SQL_CODE>
-
-    # <NEW_SRF>
-    # {query_srf}
-    # </NEW_SRF>
-    # """
 
 
     def analyze_retrieval_quality(self, context: Dict) -> Dict:
@@ -214,6 +179,63 @@ def test_rag_retrieval(embedding_manager, test_srf):
     print("💾 Context saved to ./data/test_context.txt")
     
     return rag, context
+
+Reference_Instructions = """
+SPECIAL INSTRUCTION BLOCK FOR LLM INTEGRATION:
+                1. REMOVE ALL COMMENT LINES WHEN NEW QUERY IS GENERATED FOR A NEW SRF,
+                EXCEPT THE FOLLOWING TYPES WHICH MUST BE RETAINED:
+                a. Comments containing DROP, CREATE, SELECT statements
+                b. Comments showing row counts (e.g., -- 71730 Rows)
+                c. Comments referencing IDs (e.g., -- REPORT_ID : 0011)
+                2. BASE_CYCLE: Extract the month from the commission END DATE (e.g., 31-Mar-2025 ? 'Mar_25'), then get the CYCLEID from COMMISSIONCYCLE.
+                3. PUBLISH_CYCLE: Extract the current month (e.g., if today is 30-Jun-2025 ? 'Jun_25'), then get the CYCLEID from COMMISSIONCYCLE.
+                4. Use BASE_CYCLE and PUBLISH_CYCLE values in the FINALIZE_REPORT_ADHOC procedure.
+                5. KEEP THE SQL FORMAT AND SEQUENCE INTACT. DO NOT MODIFY STRUCTURE UNLESS EXPLICITLY INSTRUCTEDS.
+"""
+
+Report_Setup_Query = """"
+--------------------------------- REPORT SETUP QUERY -----------------------------------------
+
+--STEP 5: PREPARE FOR REPORT PUBLISHING
+--REPORT_ID : 0011
+SELECT REPORTID REPORT_ID FROM COMMISSIONREPORT WHERE REPORTNAME = 'Commission for MyBL Hourly_16th Mar25 to 31st Mar25';
+--BASE_CYCLE_ID : 0022 
+--SPECIAL INSTRUCTION : BASE_CYCLE = month of commission END DATE (Mar‑25)
+SELECT CYCLEID BASE_CYCLE_ID  FROM COMMISSIONCYCLE WHERE CYCLEDESCRIPTION = 'Mar_25'; -- commission end date (BASE_CYCLE/REPORT_MONTH): 31‑Mar‑2025 → 'Mar_25'
+--REPORT_CYCLE_ID : 0033
+SELECT REPORT_CYCLE_ID,* FROM COMMISSIONCYCLEREPORTS where REPORTID = 0011 and  CYCLEID = 0022; 
+
+--CHECK ADHOC TABLE DATA
+SELECT * FROM ad_hoc_data where REPORT_CYCLE_ID = 0033;
+--delete from ad_hoc_data where REPORT_CYCLE_ID = 0033;
+--commit;
+
+--INSERT THE CHANNEL WISE CALCULATED COMMISSION DATA
+INSERT INTO AD_HOC_DATA (ID, REPORT_CYCLE_ID, CHANNEL_CODE,COMMISSION_AMOUNT,AMOUNT_TYPE_ID,AMOUNT)
+SELECT AD_HOC_DATA_ID.NEXTVAL ID, 0033 REPORT_CYCLE_ID, DD_CODE, COMMISSION_AMOUNT,1,TOTAL_RECHARGE
+FROM (
+SELECT DD_CODE, SUM(RECHARGE_AMOUNT*HIT) TOTAL_RECHARGE, SUM(COMMISSION_AMOUNT)  COMMISSION_AMOUNT
+FROM TEMP_FOR_DET1_MYBL_16_31MAR25
+GROUP BY DD_CODE
+);
+commit;
+
+--CHECK SUM OF COMMISSION AMOUNT
+SELECT SUM(COMMISSION_AMOUNT) FROM ad_hoc_data where REPORT_CYCLE_ID = 0033; --  476868.5  
+
+--PUBLISH_CYCLE_ID : 0044 
+--SPECIAL INSTRUCTION : PUBLISH_CYCLE = current sysdate month (e.g. Jun‑25 if today = 30‑Jun‑2025)
+SELECT CYCLEID PUBLISH_CYCLE_ID FROM COMMISSIONCYCLE WHERE CYCLEDESCRIPTION = 'Apr_25'; --PUBLISH_CYCLE(REPORT_PUBLISH_MONTH)
+
+--STEP 6: SET UP COMMISSION DETAILS IN COMMISSION PLATFORM
+--PROC_COMMISSION_DETAIL_SETUP(<REPORT_TITLE>, <PUBLISH_CYCLE_ID>, <DETAIL1>, <LEVEL1>, ..., <DETAIL9>, <LEVEL9>);
+EXEC PROC_COMMISSION_DETAIL_SETUP('Commission for MyBL Hourly_16th Mar25 to 31st Mar25',0044,'TEMP_FOR_DET1_MYBL_16_31MAR25','Deno Details');
+
+--STEP 7: FINALIZE AND PUBLISH COMMISSION REPORT
+--FINALIZE_REPORT_ADHOC(<REPORT_NAME>, <REPORT_CYCLE_ID>, <BASE_CYCLE>, <PUBLISH_CYCLE>, <APPROVAL_FLOW_ID>, <PUBLISH_TYPE>)
+EXEC FINALIZE_REPORT_ADHOC('Commission for MyBL Hourly_16th Mar25 to 31st Mar25', 0033,'Mar_25', 'Apr_25',290, 1);--FOLLOW THE BASE_CYCLE & PUBLISH_CYCLE SPECIAL INSTRUCTION HERE ALSO
+
+"""
 
 # Direct run করার জন্য
 if __name__ == "__main__":
