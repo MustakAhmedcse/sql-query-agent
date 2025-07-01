@@ -63,14 +63,7 @@ class RAGSystem:
         similar_examples = context.get('similar_examples', [])
         
         # Context prompt তৈরি করি
-        formatted_context = f"""
-            You are an SQL query generation expert. Your task is to generate accurate SQL queries by analyzing SRF (Sales Report Format).
-
-            TARGET SRF (for which SQL query needs to be generated):
-            {query_srf}
-
-            SIMILAR EXAMPLES (similar SRFs and their SQL queries from historical data):
-            """
+        formatted_context = ""
         
         # Similar examples add করি
         #for i, example in enumerate(similar_examples, 1):
@@ -81,28 +74,66 @@ class RAGSystem:
             sql_query = example.get('sql_query', '')
                 
             formatted_context += f"""
-            --- Example {1} (Similarity: {similarity_score:.2f}) ---
-            SRF: {srf_text}
+           
+            ---Old SRF:  
+            {srf_text}
 
-            SQL Query:
+            ---Old SQL Query with detail comments with step by step instruction: 
             {sql_query}
+
+            ---New SRF (for which SQL query needs to be generated): 
+            {query_srf}
 
             """
         
-        # Instructions add করি
-        formatted_context += """
-            INSTRUCTIONS:
-            1. Ensure generated query matches the exact format of examples
-            2. Analyze the Target SRF and match it with similar examples
-            3. Understand the Target SRF requirements  
-            5. Maintain commission business logic
-            6. Generate exact SQL format shown in the examples above (line-by-line, comments, table names, CTE usage, formatting).
-
-            Generate SQL Query for the Target SRF:
-            """
         
         return formatted_context
     
+    # def format_context_for_llm(self, context: Dict) -> str:
+    #         """
+    #         LLM এর জন্য context format করি এবং নির্দেশ ও কোড আলাদা করি।
+    #         """
+    #         query_srf = context.get('query_srf', '')
+    #         similar_examples = context.get('similar_examples', [])
+            
+    #         formatted_context = ""
+            
+    #         if similar_examples:
+    #             example = similar_examples[0]
+    #             srf_text = example.get('srf_text', '')
+    #             sql_query_full = example.get('sql_query', '')
+
+    #             # STEP 0 (নির্দেশ) এবং বাকি SQL কোড আলাদা করা
+    #             instructions = ""
+    #             sql_code = ""
+    #             if "----- STEP 0:" in sql_query_full:
+    #                 parts = sql_query_full.split("----- STEP 1:")
+    #                 instructions = parts[0]
+    #                 if len(parts) > 1:
+    #                     sql_code = "----- STEP 1:" + parts[1] # STEP 1 থেকে শুরু
+    #             else:
+    #                 sql_code = sql_query_full
+
+    #             # XML ট্যাগ দিয়ে সুন্দরভাবে সাজানো
+    #             formatted_context = f"""
+    # <REFERENCE_SRF>
+    # {srf_text}
+    # </REFERENCE_SRF>
+
+    # <REFERENCE_INSTRUCTIONS>
+    # {instructions}
+    # </REFERENCE_INSTRUCTIONS>
+
+    # <REFERENCE_SQL_CODE>
+    # {sql_code}
+    # </REFERENCE_SQL_CODE>
+
+    # <NEW_SRF>
+    # {query_srf}
+    # </NEW_SRF>
+    # """
+
+
     def analyze_retrieval_quality(self, context: Dict) -> Dict:
         """
         Retrieval quality analyze করি

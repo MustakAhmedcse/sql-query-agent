@@ -5,6 +5,7 @@ Supports OpenAI and Ollama AI providers only
 No template fallback - shows proper errors when AI fails
 """
 
+import datetime
 import logging
 import requests
 import json
@@ -114,14 +115,14 @@ class SQLGenerator:
                     "messages": [
                         {
                             "role": "system",
-                            "content": "You are an expert SQL developer specializing in MyBL Commission reports for a telecom company. Generate accurate, executable SQL queries based on SRF requirements."
+                            "content": "You are an Oracle SQL expert specializing in commission calculation systems. You must generate clean, executable SQL queries that follow the exact structure and logic of the provided reference example. Remove all descriptive comments except structural ones."
                         },
                         {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "temperature": 0.1,
+                    "temperature": 0,
                     "max_tokens": 3000
                 },
                 timeout=120
@@ -187,7 +188,7 @@ class SQLGenerator:
                         "num_predict": 10000
                     }
                 },
-                timeout=120
+                timeout=200
             )
             
             if response.status_code == 200:
@@ -234,36 +235,53 @@ class SQLGenerator:
     
     def _prepare_ai_prompt(self, formatted_context: str) -> str:
         """Prepare prompt for AI model"""
-        return f"""You are an expert SQL developer specializing in Commission reports for a telecom company.
-                    Your task is to generate accurate SQL queries based on SRF (Service Request Form) requirements.
+        current_month = datetime.datetime.now().strftime("%b_%y")
+        # return f"""Here is an old SRF and sql query with detail comments for your referenc-
+        #             {formatted_context}
+        #             Replace the PUBLISH_CYCLE with {current_month}
+        #             Genated SQL Query for new SRF:
+        #             """
+       
+        return f"""You are an Oracle SQL expert for commission calculation. Follow these instructions EXACTLY:
 
-                    CONTEXT:
+                    CRITICAL INSTRUCTIONS (MUST FOLLOW):
+                    1. REMOVE ALL descriptive comment lines from the generated SQL
+                    2. KEEP ONLY these comment types:
+                    - Comments with DROP, CREATE, SELECT statements
+                    - Comments showing row counts (e.g., -- 71730 Rows)
+                    - Comments with IDs (e.g., -- REPORT_ID : 0011)
+                    3. Replace ALL date-specific table names with new SRF dates
+                    4. Replace BASE_CYCLE with extracted month from commission END DATE
+                    5. Replace PUBLISH_CYCLE with {current_month}
+                    6. Keep the exact SQL structure and sequence
+
+                    REFERENCE EXAMPLE:
                     {formatted_context}
 
-                    REQUIREMENTS:
-                    1. Generate a complete, executable SQL query
-                    2. Use proper table names and column names for commission system
-                    3. Include all necessary conditions from the SRF
-                    4. Add comments explaining key parts
-                    5. Focus on commission calculation logic
-                    6. Handle time-based conditions if specified
-                    7. Include proper date filtering
-                    8. Use appropriate joins and aggregations
+                    TASK: Generate SQL for the NEW SRF following the exact same structure and logic.
 
-                    CRITICAL RULES:
-                    1. COPY the structure of the example SQL EXACTLY - including all temporary tables
-                    2. Follow the precise format: SELECT counts, table creation, WITH clause and table merges
-                    3. Keep all row count comments but use "0" for all counts (e.g., "-- 0 Rows")
-                    4. Use Oracle-specific syntax including PURGE and hints like /*+ PARALLEL(10)*/
-                    5. For table names, use EXACT naming pattern from example (changing only date parts):
-                        - TEMP_FOR_MYBL_REG_16_28_FEB25 → TEMP_FOR_MYBL_REG_[start_day]_[end_day]_[month][year]
-                        - TEMP_FOR_DET2_MYBL_16_28FEB25 → TEMP_FOR_DET2_MYBL_[start_day]_[end_day][month][year]
-                        - MY_BL_RECHARGE_MONTHLY_28FEB25 → MY_BL_RECHARGE_MONTHLY_[end_day][month][year]
-                    6. Keep all commented SQL sections identical to example
-                    7. NEVER simplify or optimize the structure - match the example exactly  
-                    Generate ONLY the SQL query with comments. Do not include explanations outside the SQL.
+                    IMPORTANT: 
+                    - Extract commission END DATE month for BASE_CYCLE (e.g., 15-Feb-2025 → 'Feb_25')
+                    - Use {current_month} for PUBLISH_CYCLE
+                    - Update all table names with new date ranges
+                    - Remove descriptive comments but keep structural comments
 
-                    SQL Query:"""
+                    Generated SQL Query:"""
+
+        # return f"""You are an expert Oracle SQL developer. Your task is to generate a new SQL query based on a new SRF.
+
+        #             Follow these steps precisely:
+        #             1.  Read the `<REFERENCE_INSTRUCTIONS>`. These are the rules you MUST follow.
+        #             2.  Analyze the `<REFERENCE_SQL_CODE>` and `<REFERENCE_SRF>` to understand the logic.
+        #             3.  Apply the logic and rules to the `<NEW_SRF>` to generate the final SQL query.
+        #             4.  **CRITICAL:** The generated query must be clean, following all rules from `<REFERENCE_INSTRUCTIONS>`, such as removing descriptive comments.
+        #             5.  Replace `BASE_CYCLE` with the month from the new SRF's end date.
+        #             6.  Replace `PUBLISH_CYCLE` with `{current_month}`.
+
+        #             Here is the context:
+        #             {formatted_context}
+
+        #             Generated SQL Query:"""
     
     def _extract_sql_from_response(self, response_text: str) -> Optional[str]:
         """Extract SQL query from AI response"""
