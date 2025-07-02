@@ -85,8 +85,6 @@ class RAGSystem:
 
             <REFERENCE_SQL_CODE>
             {sql_query}
-
-            {Report_Setup_Query}
             </REFERENCE_SQL_CODE>
 
             <NEW_SRF> -- (for which SQL query needs to be generated)
