@@ -142,7 +142,7 @@ class CommissionAIAssistant:
             
             # Step 3: Generate SQL
             print("3️⃣ Generating SQL query...")
-            generation_result = self.sql_generator.generate_sql_query(formatted_context)
+            generation_result = self.sql_generator.generate_sql_query(formatted_context,context)
             
             if not generation_result['success']:
                 return {
@@ -153,7 +153,7 @@ class CommissionAIAssistant:
             
             # Step 4: Validate
             print("4️⃣ Validating generated SQL...")
-            sql_query = generation_result['sql_query']
+            sql_query = generation_result['response']
             validation = self.sql_generator.validate_generated_sql(sql_query)
             
             print("✅ SQL generation completed!")
