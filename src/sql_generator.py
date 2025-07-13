@@ -184,11 +184,13 @@ class SQLGenerator:
         return f"""You are an Oracle SQL expert for commission calculation. Follow these instructions EXACTLY:
 
                     CRITICAL INSTRUCTIONS (MUST FOLLOW):
-                    1. REMOVE ALL descriptive comment lines from the generated SQL
-                    2. KEEP ONLY these comment types:
+                    1. REMOVE ALL comments that start and end with --# (e.g., --# THIS IS A REMOVABLE COMMENT --#)
+                    2. KEEP ALL other comment types:
                     - Comments with DROP, CREATE, SELECT statements
-                    - Comments showing row counts (e.g., -- 71730 Rows)
+                    - Comments showing row counts but rest the row counts (e.g., -- 71730 Rows into 0 Rows)
                     - Comments with IDs (e.g., -- REPORT_ID : 0011)
+                    - Step headers (e.g., -- STEP 1: VERIFY SUPPORTING DATA --)
+                    - Single line comments without --# markers
                     3. Replace ALL date-specific table names with new SRF dates
                     4. Replace BASE_CYCLE with extracted month from commission END DATE
                     5. Replace PUBLISH_CYCLE with {current_month}
@@ -203,7 +205,7 @@ class SQLGenerator:
                     - Extract commission END DATE month for BASE_CYCLE (e.g., 15-Feb-2025 → 'Feb_25')
                     - Use {current_month} for PUBLISH_CYCLE
                     - Update all table names with new date ranges
-                    - Remove descriptive comments but keep structural comments
+                    
                     
                    {f"\nNote: In the previous attempt, the SQL had these structural issues:\n{correction_hint}\nPlease fix them." if correction_hint else ""}
 
