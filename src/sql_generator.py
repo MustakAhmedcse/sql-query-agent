@@ -95,7 +95,8 @@ class SQLGenerator:
                     logger.warning(f"Attempt {attempt+1}: AI generation failed.")
                     continue
 
-                generated_sql = ai_result.get('response', '')
+                generated_sql = self.remove_outer_backticks(ai_result.get('response', ''))
+                
                 validation_result = self.validate_sql_with_llm(reference_sql, generated_sql)
 
                 if not isinstance(validation_result, dict) or 'confident_score' not in validation_result:
@@ -348,7 +349,7 @@ class SQLGenerator:
         
         if response['success']:
             try:
-                response_json = json.loads(response['response'])
+                response_json = json.loads(self.remove_outer_backticks(response['response']))
                 return response_json
             except json.JSONDecodeError as e:
                 logger.error(f"JSON decode error: {str(e)}")
@@ -360,7 +361,6 @@ class SQLGenerator:
 
     def call_openAI_API (self,messages:List) ->str:      
         """Call OpenAI API with the provided messages"""
-
 
         try:
             if not self.api_key:
@@ -476,6 +476,19 @@ class SQLGenerator:
                 'response': str(e)
             }
         
+    def remove_outer_backticks(self,text: str) -> str:
+        lines = text.strip().splitlines()
+
+        # Remove opening line if it starts with ``` (optionally followed by 'sql')
+        if lines and lines[0].strip().startswith("```"):
+            lines = lines[1:]
+
+        # Remove closing line if it is just ```
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+
+        return "\n".join(lines).strip()
+
 
     def preprocess_sql(self,sql: str) -> str:
         # Step 1: Remove single line and multi-line comments
