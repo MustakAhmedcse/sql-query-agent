@@ -144,8 +144,9 @@ class CommissionAIAssistant:
             print("3️⃣ Generating SQL query...")
             generation_result = self.sql_generator.generate_sql_query(formatted_context,context)
 
-            if  generation_result['last_result'] is not None:
+            if generation_result.get('last_result') is not None:
                 generation_result = generation_result['last_result']
+
 
             if not generation_result['success']:
                 return {
