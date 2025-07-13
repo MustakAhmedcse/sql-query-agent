@@ -106,17 +106,17 @@ class SQLGenerator:
                 score = validation_result['confident_score']
                 ai_result['validation'] = validation_result
 
-                if score >= 0.9:
+                if score >= 0.7:
                     logger.info(f"Validation passed with score {score:.2f} on attempt {attempt+1}.")
                     return ai_result
                 else:
                     correction_hint = validation_result.get('differences', '')
-                    logger.info(f"Validation score {score:.2f} < 0.9. Differences: {correction_hint}")
+                    logger.info(f"Validation score {score:.2f} < 0.7. Differences: {correction_hint}")
                     logger.info(f"Retrying attempt {attempt+1}...")
 
             return {
                 'success': False,
-                'error': 'Unable to generate a validated SQL with score ≥ 0.9 after retries.',
+                'error': 'Unable to generate a validated SQL with score ≥ 0.7 after retries.',
                 'attempts': MAX_RETRIES,
                 'last_result': ai_result
             }
