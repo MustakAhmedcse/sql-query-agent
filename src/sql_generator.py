@@ -31,46 +31,7 @@ class SQLGenerator:
         
         # Note: Template generator removed - no fallback mechanism
         
-    # def generate_sql_query(self, formatted_context: str) -> Dict:
-    #     """
-    #     Generate SQL query based on configured AI provider
-    #     """
-    #     try:
-    #         # Only support AI providers - no template fallback
-    #         if self.ai_provider not in ["openai", "ollama"]:
-    #             return {
-    #                 'success': False,
-    #                 'error': f'Unsupported AI provider: {self.ai_provider}. Please use "openai" or "ollama".',
-    #                 'method': 'error'
-    #             }
-            
-    #         # Generate using AI providers only
-    #         ai_result = self._generate_with_ai(formatted_context)
-            
-    #         if ai_result['success']:
-    #             # Validate AI result
-    #             validation = self.validate_generated_sql(ai_result['sql_query'])
-    #             ai_result['validation'] = validation
-    #             return ai_result
-    #         else:
-    #             # Return the AI error directly - no fallback
-    #             logger.error(f"AI generation failed: {ai_result.get('error')}")
-    #             return {
-    #                 'success': False,
-    #                 'error': f"AI SQL generation failed: {ai_result.get('error', 'Unknown error')}",
-    #                 'method': ai_result.get('method', 'unknown'),
-    #                 'details': 'Please check your AI provider configuration and try again.'
-    #             }
-        
-    #     except Exception as e:
-    #         logger.error(f"SQL generation error: {str(e)}")
-    #         return {
-    #             'success': False,
-    #             'error': f"SQL generation failed: {str(e)}",
-    #             'method': 'error',
-    #             'details': 'An unexpected error occurred during SQL generation.'
-    #         }
-    
+
     def generate_sql_query(self, formatted_context: str, context: str) -> Dict:
         """
         Generate SQL query and validate against reference SQL until confident_score ≥ 0.9.
@@ -96,6 +57,8 @@ class SQLGenerator:
                     continue
 
                 generated_sql = self.remove_outer_backticks(ai_result.get('response', ''))
+                generated_sql = self.remove_comment_blocks(generated_sql)
+                ai_result['response'] = generated_sql
                 
                 validation_result = self.validate_sql_with_llm(reference_sql, generated_sql)
 
@@ -551,3 +514,7 @@ class SQLGenerator:
         sql = re.sub(r'\s+', ' ', sql).strip()
 
         return sql
+    
+    def remove_comment_blocks(self,sql_text: str) -> str:
+        cleaned_text = re.sub(r'--#.*?--#', '', sql_text, flags=re.DOTALL)
+        return cleaned_text.strip()

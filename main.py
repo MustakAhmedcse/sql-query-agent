@@ -157,7 +157,7 @@ class CommissionAIAssistant:
             
             # Step 4: Validate
             print("4️⃣ Validating generated SQL...")
-            sql_query = generation_result['response']
+            sql_query =self.sql_generator.remove_outer_backticks(generation_result['response'])
             validation = self.sql_generator.validate_generated_sql(sql_query)
             
             print("✅ SQL generation completed!")
