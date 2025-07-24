@@ -34,7 +34,7 @@ def setup_data():
         print("🔧 Setting up training data...")
         
         # Check if source data exists
-        source_file = "../MyBL_FEB_MAR_APR_MAY_25/srf_sql_pairs.jsonl"
+        source_file = os.path.join(os.path.dirname(__file__), "srf_sql_pairs.jsonl")
         if not os.path.exists(source_file):
             print(f"❌ Source data file not found: {source_file}")
             print("Please ensure your training data file exists at the correct location.")

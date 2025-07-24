@@ -5,6 +5,7 @@ Enhanced with metadata extraction
 """
 import json
 import os
+from typing import Dict, List, Optional
 import pandas as pd
 import re
 from pathlib import Path
@@ -17,9 +18,14 @@ logger = logging.getLogger(__name__)
 class DataProcessor:
     """SRF-SQL data process করার জন্য simple class"""
     
-    def __init__(self, data_path="./data/training_data"):
+    def __init__(self, data_path="./data/training_data",mapping_file="./commission_mapping.json"):
+        self.MAPPING = self.load_mapping(mapping_file)
         self.data_path = Path(data_path)
         self.data_path.mkdir(parents=True, exist_ok=True)
+        
+    def load_mapping(self, path: str) -> List[Dict[str, str]]:
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
         
     def load_existing_data(self, jsonl_file_path):
         """
@@ -168,8 +174,10 @@ class DataProcessor:
                         break
             
             if commission_name:
+                metadata_by_title = self.extract_commission_metadata_from_title(commission_name)
                 # উন্নত ফাংশন ব্যবহার করে কমিশন টাইপ এক্সট্র্যাক্ট করি
-                commission_type = self._extract_commission_type(commission_name)
+                #commission_type = self._extract_commission_type(commission_name)
+                commission_type = metadata_by_title['type'] if metadata_by_title else "unknown"
                 
         except Exception as e:
             logger.warning(f"Error extracting metadata: {str(e)}")
@@ -179,60 +187,72 @@ class DataProcessor:
             "commission_type": commission_type or "unknown"
         }
 
-    def _extract_commission_type(self, commission_name):
-        """
-        বিভিন্ন ফরম্যাটের কমিশন নাম থেকে কমিশন টাইপ এক্সট্র্যাক্ট করে
-        """
-        if not commission_name:
-            return "unknown"
+    # def _extract_commission_type(self, commission_name):
+    #     """
+    #     বিভিন্ন ফরম্যাটের কমিশন নাম থেকে কমিশন টাইপ এক্সট্র্যাক্ট করে
+    #     """
+    #     if not commission_name:
+    #         return "unknown"
             
-        # স্টেপ 1: ডেট প্যাটার্ন খুঁজে বের করি
-        date_patterns = [
-            r'_\d+(?:st|nd|rd|th)?\s+(?:to|and)\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+',  # _11th to 12th May22
-            r'_\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # _1st Apr25 to 15th Apr25
-            r'\d+(?:st|nd|rd|th)?\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th to 12th May22
-            r'\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th Apr22
-            r'[A-Za-z]+\'?\d+', # May22, Apr'25
-        ]
+    #     # স্টেপ 1: ডেট প্যাটার্ন খুঁজে বের করি
+    #     date_patterns = [
+    #         r'_\d+(?:st|nd|rd|th)?\s+(?:to|and)\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+',  # _11th to 12th May22
+    #         r'_\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # _1st Apr25 to 15th Apr25
+    #         r'\d+(?:st|nd|rd|th)?\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th to 12th May22
+    #         r'\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th Apr22
+    #         r'[A-Za-z]+\'?\d+', # May22, Apr'25
+    #     ]
         
-        commission_type = commission_name
+    #     commission_type = commission_name
         
-        # ডেট প্যাটার্নগুলি খুঁজি
-        for pattern in date_patterns:
-            match = re.search(pattern, commission_type)
-            if match:
-                # ডেট এবং তার আগের '_' রিমুভ করি
-                date_part = match.group(0)
-                if date_part.startswith('_'):
-                    date_part = date_part
-                else:
-                    date_part = f" {date_part}"
-                commission_type = commission_type.replace(date_part, '')
-                break
+    #     # ডেট প্যাটার্নগুলি খুঁজি
+    #     for pattern in date_patterns:
+    #         match = re.search(pattern, commission_type)
+    #         if match:
+    #             # ডেট এবং তার আগের '_' রিমুভ করি
+    #             date_part = match.group(0)
+    #             if date_part.startswith('_'):
+    #                 date_part = date_part
+    #             else:
+    #                 date_part = f" {date_part}"
+    #             commission_type = commission_type.replace(date_part, '')
+    #             break
         
-        # স্টেপ 2: শেষের অতিরিক্ত '_' রিমুভ করি
-        commission_type = commission_type.rstrip('_')
+    #     # স্টেপ 2: শেষের অতিরিক্ত '_' রিমুভ করি
+    #     commission_type = commission_type.rstrip('_')
         
-        # স্টেপ 3: স্পেশাল কেস হ্যান্ডল করি
-        if commission_type.startswith("Commission for "):
-            # "Commission for Nagad" এর ক্ষেত্রে পুরো নামই রাখি
-            return commission_type.strip()
+    #     # স্টেপ 3: স্পেশাল কেস হ্যান্ডল করি
+    #     if commission_type.startswith("Commission for "):
+    #         # "Commission for Nagad" এর ক্ষেত্রে পুরো নামই রাখি
+    #         return commission_type.strip()
         
-        # স্টেপ 4: MyBL Hourly, Portonics ইত্যাদি প্যাটার্ন হ্যান্ডল করি
-        if "MyBL" in commission_type and "Hourly" in commission_type:
-            if "Portonics" in commission_type:
-                return "MyBL Hourly Portonics"
-            return "MyBL Hourly"
+    #     # স্টেপ 4: MyBL Hourly, Portonics ইত্যাদি প্যাটার্ন হ্যান্ডল করি
+    #     if "MyBL" in commission_type and "Hourly" in commission_type:
+    #         if "Portonics" in commission_type:
+    #             return "MyBL Hourly Portonics"
+    #         return "MyBL Hourly"
         
-        if "BP Variable Incentive" in commission_type:
-            return "BP Variable Incentive"
+    #     if "BP Variable Incentive" in commission_type:
+    #         return "BP Variable Incentive"
         
-        # স্টেপ 5: তবুও যদি '_' থাকে তবে সবগুলো রাখি (RSO_RSO Supervisor_BP_GA ক্ষেত্রে)
-        if "_" in commission_type and any(x in commission_type for x in ["RSO", "BP", "GA"]):
-            return commission_type.strip()
+    #     # স্টেপ 5: তবুও যদি '_' থাকে তবে সবগুলো রাখি (RSO_RSO Supervisor_BP_GA ক্ষেত্রে)
+    #     if "_" in commission_type and any(x in commission_type for x in ["RSO", "BP", "GA"]):
+    #         return commission_type.strip()
         
-        return commission_type.strip()
+    #     return commission_type.strip()
+    def extract_commission_metadata_from_title(self, text: str) -> Optional[Dict[str, str]]:
+        text_lower = text.lower()
+        best_match = None
+        max_keywords = 0
 
+        for entry in self.MAPPING:
+            keywords = entry["keywords"]
+            if all(kw.lower() in text_lower for kw in keywords):
+                if len(keywords) > max_keywords:
+                    best_match = entry
+                    max_keywords = len(keywords)
+
+        return best_match
     def categorize_data_by_metadata(self, processed_data):
         """
         Add categories to data for better filtering
