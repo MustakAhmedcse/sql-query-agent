@@ -37,8 +37,15 @@ class SQLGenerator:
         Generate SQL query and validate against reference SQL until confident_score ≥ 0.9.
         Uses LLM feedback to refine generation.
         """
-        similar_examples = context.get('similar_examples', [])[0]
-        reference_sql = similar_examples.get('sql_query', '')
+        similar_examples = context.get('similar_examples', [])
+        if len(similar_examples) == 0:
+            return {
+                'success': False,
+                'error': 'No similar examples found in context. Cannot generate SQL.',
+                'method': 'error'
+            }
+        
+        reference_sql = similar_examples[0].get('sql_query', '')
         try:
             if self.ai_provider not in ["openai", "ollama"]:
                 return {
