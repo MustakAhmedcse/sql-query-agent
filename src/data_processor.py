@@ -187,59 +187,7 @@ class DataProcessor:
             "commission_type": commission_type or "unknown"
         }
 
-    # def _extract_commission_type(self, commission_name):
-    #     """
-    #     বিভিন্ন ফরম্যাটের কমিশন নাম থেকে কমিশন টাইপ এক্সট্র্যাক্ট করে
-    #     """
-    #     if not commission_name:
-    #         return "unknown"
-            
-    #     # স্টেপ 1: ডেট প্যাটার্ন খুঁজে বের করি
-    #     date_patterns = [
-    #         r'_\d+(?:st|nd|rd|th)?\s+(?:to|and)\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+',  # _11th to 12th May22
-    #         r'_\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # _1st Apr25 to 15th Apr25
-    #         r'\d+(?:st|nd|rd|th)?\s+to\s+\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th to 12th May22
-    #         r'\d+(?:st|nd|rd|th)?\s+[A-Za-z]+\'?\d+', # 11th Apr22
-    #         r'[A-Za-z]+\'?\d+', # May22, Apr'25
-    #     ]
-        
-    #     commission_type = commission_name
-        
-    #     # ডেট প্যাটার্নগুলি খুঁজি
-    #     for pattern in date_patterns:
-    #         match = re.search(pattern, commission_type)
-    #         if match:
-    #             # ডেট এবং তার আগের '_' রিমুভ করি
-    #             date_part = match.group(0)
-    #             if date_part.startswith('_'):
-    #                 date_part = date_part
-    #             else:
-    #                 date_part = f" {date_part}"
-    #             commission_type = commission_type.replace(date_part, '')
-    #             break
-        
-    #     # স্টেপ 2: শেষের অতিরিক্ত '_' রিমুভ করি
-    #     commission_type = commission_type.rstrip('_')
-        
-    #     # স্টেপ 3: স্পেশাল কেস হ্যান্ডল করি
-    #     if commission_type.startswith("Commission for "):
-    #         # "Commission for Nagad" এর ক্ষেত্রে পুরো নামই রাখি
-    #         return commission_type.strip()
-        
-    #     # স্টেপ 4: MyBL Hourly, Portonics ইত্যাদি প্যাটার্ন হ্যান্ডল করি
-    #     if "MyBL" in commission_type and "Hourly" in commission_type:
-    #         if "Portonics" in commission_type:
-    #             return "MyBL Hourly Portonics"
-    #         return "MyBL Hourly"
-        
-    #     if "BP Variable Incentive" in commission_type:
-    #         return "BP Variable Incentive"
-        
-    #     # স্টেপ 5: তবুও যদি '_' থাকে তবে সবগুলো রাখি (RSO_RSO Supervisor_BP_GA ক্ষেত্রে)
-    #     if "_" in commission_type and any(x in commission_type for x in ["RSO", "BP", "GA"]):
-    #         return commission_type.strip()
-        
-    #     return commission_type.strip()
+    
     def extract_commission_metadata_from_title(self, text: str) -> Optional[Dict[str, str]]:
         text_lower = text.lower()
         best_match = None
@@ -311,7 +259,7 @@ def process_your_data(jsonl_file_path):
 # Direct run করার জন্য
 if __name__ == "__main__":
     # আপনার existing data file path
-    your_jsonl_file = "../MyBL_FEB_MAR_APR_MAY_25/srf_sql_pairs.jsonl"
+    your_jsonl_file = os.path.join(os.path.dirname(__file__), "srf_sql_pairs.jsonl")
     
     # Process করি
     result = process_your_data(your_jsonl_file)
