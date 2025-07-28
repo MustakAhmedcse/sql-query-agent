@@ -361,7 +361,7 @@ class SQLGenerator:
                     "model": self.model_name,
                     "messages": messages,
                     "temperature": 0,
-                    "max_tokens": 3000
+                    "max_tokens": 5000
                 },
                 timeout=120
             )
@@ -591,13 +591,11 @@ class SQLGenerator:
     - Insert to AD_HOC_DATA using:
     - Correct AMOUNT_TYPE_ID
     - Appropriate classifier/tag
-    - Register each detail via PROC_COMMISSION_DETAIL_SETUP:
+    - Register only first detail via PROC_COMMISSION_DETAIL_SETUP:
     - Use meaningful level names (e.g., 'SELECTED DENO DETAILS')
     - FINALIZE_REPORT_ADHOC must:
     - Register/publish all detail lines
     - Follow SRF reporting expectations exactly
-    - If only one incentive:
-    - Proceed using only one detail table through full pipeline
 
     --------------------------------------------------------------------------------
     ADDITIONAL RULES
@@ -607,6 +605,7 @@ class SQLGenerator:
     - Use only provided/supplied input or target tables
     - Never guess values or default to old SRFs
     - Follow structure and sequence of provided reference SQL
+    - Do not use any value of reference SQL that is not explicitly stated in the SRF
 
     --------------------------------------------------------------------------------
     OUTPUT FORMAT
