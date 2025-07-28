@@ -40,6 +40,7 @@ assistant = None
 # Pydantic models
 class SRFRequest(BaseModel):
     srf_text: str
+    target: Optional[str] = None  # Optional target table structure
 
 class SQLResponse(BaseModel):
     success: bool
@@ -129,7 +130,8 @@ async def generate_sql(request: SRFRequest):
         start_time = time.time()
         
         result = assistant.generate_sql_for_srf(
-            request.srf_text
+            request.srf_text,
+            request.target
         )
         
         end_time = time.time()

@@ -111,7 +111,7 @@ class SQLGenerator:
                 response = self.call_openAI_API([
                     {
                         "role": "system",
-                        "content": "You are an expert SQL generator for commission reports."
+                        "content": self.system_promtp
                     },
                     {
                         "role": "user",
@@ -150,36 +150,45 @@ class SQLGenerator:
     def _prepare_ai_prompt(self, formatted_context: str, correction_hint:str = "") -> str:
         """Prepare prompt for AI model"""
         current_month = datetime.datetime.now().strftime("%b_%y")
-       
-        return f"""You are an Oracle SQL expert for commission calculation. Follow these instructions EXACTLY:
 
-                    CRITICAL INSTRUCTIONS (MUST FOLLOW):
-                    1. REMOVE ALL comments that start and end with --# (e.g., --# THIS IS A REMOVABLE COMMENT --#)
-                    2. KEEP ALL other comment types:
-                    - Comments with DROP, CREATE, SELECT statements
-                    - Comments showing row counts but rest the row counts (e.g., -- 71730 Rows into 0 Rows)
-                    - Comments with IDs (e.g., -- REPORT_ID : 0011)
-                    - Step headers (e.g., -- STEP 1: VERIFY SUPPORTING DATA --)
-                    - Single line comments without --# markers
-                    3. Replace ALL date-specific table names with new SRF dates
-                    4. Replace BASE_CYCLE with extracted month from commission END DATE
-                    5. Replace PUBLISH_CYCLE with {current_month}
-                    6. Keep the exact SQL structure and sequence
-
-                    REFERENCE EXAMPLE:
-                    {formatted_context}
-
-                    TASK: Generate SQL for the NEW SRF following the exact same structure and logic.
-
-                    IMPORTANT: 
-                    - Extract commission END DATE month for BASE_CYCLE (e.g., 15-Feb-2025 → 'Feb_25')
-                    - Use {current_month} for PUBLISH_CYCLE
-                    - Update all table names with new date ranges
-                    
+        return f"""
+                   Replace PUBLISH_CYCLE with {current_month}
                     
                    {f"\nNote: In the previous attempt, the SQL had these structural issues:\n{correction_hint}\nPlease fix them." if correction_hint else ""}
 
-                    Generated SQL Query:"""
+                   CONTEXT:
+                    {formatted_context}
+
+                    Generated SQL Query For New SRF:"""
+       
+        # return f"""You are an Oracle SQL expert for commission calculation. Follow these instructions EXACTLY:
+
+        #             CRITICAL INSTRUCTIONS (MUST FOLLOW):
+        #             1. REMOVE ALL comments that start and end with --# (e.g., --# THIS IS A REMOVABLE COMMENT --#)
+        #             2. KEEP ALL other comment types:
+        #             - Comments with DROP, CREATE, SELECT statements
+        #             - Comments showing row counts but rest the row counts (e.g., -- 71730 Rows into 0 Rows)
+        #             - Comments with IDs (e.g., -- REPORT_ID : 0011)
+        #             - Step headers (e.g., -- STEP 1: VERIFY SUPPORTING DATA --)
+        #             - Single line comments without --# markers
+        #             3. Replace ALL date-specific table names with new SRF dates
+        #             4. Replace BASE_CYCLE with extracted month from commission END DATE
+        #             5. Replace PUBLISH_CYCLE with {current_month}
+        #             6. Keep the exact SQL structure and sequence
+        #             7. DO NOT reuse any commission rate or incentive from previous examples. 
+        #                 Use only what's clearly stated in the current SRF — either directly or from KPI/TARGET tables.                   
+
+        #             IMPORTANT: 
+        #             - Extract commission END DATE month for BASE_CYCLE (e.g., 15-Feb-2025 → 'Feb_25')
+        #             - Update all table names with new date ranges
+                    
+                    
+        #            {f"\nNote: In the previous attempt, the SQL had these structural issues:\n{correction_hint}\nPlease fix them." if correction_hint else ""}
+
+        #            CONTEXT:
+        #             {formatted_context}
+
+        #             Generated SQL Query For New SRF:"""
     
     def _extract_sql_from_response(self, response_text: str) -> Optional[str]:
         """Extract SQL query from AI response"""
@@ -525,3 +534,86 @@ class SQLGenerator:
     def remove_comment_blocks(self,sql_text: str) -> str:
         cleaned_text = re.sub(r'--#.*?--#', '', sql_text, flags=re.DOTALL)
         return cleaned_text.strip()
+    
+
+    system_promtp = """
+    You are an expert for Oracle SQL Generation for Commission/Incentive Calculation
+
+    --------------------------------------------------------------------------------
+    GENERAL BEHAVIOR
+    --------------------------------------------------------------------------------
+
+    Before writing SQL:
+
+    1. Analyze the SRF requirements carefully.
+    2. Identify all required detail tables:
+    - Each table must represent a distinct commission/incentive/payout based on the SRF logic and reporting needs.
+    - For each, provide:
+        - A name (e.g., Detail Table 1: Selected Deno Incentive)
+        - A brief description of its business context and calculation basis.
+    3. Do not write SQL until all required detail tables are clearly defined.
+
+    --------------------------------------------------------------------------------
+    CRITICAL INSTRUCTIONS (MUST FOLLOW)
+    --------------------------------------------------------------------------------
+
+    BEFORE SQL GENERATION:
+    a. Explicitly list each required detail table:
+    - Name and number (e.g., Detail Table 2: All Bundle Deno Incentive)
+    - Business meaning and data source
+    b. Proceed to SQL only after this identification step.
+
+    COMMENT HANDLING:
+    - RETAIN these comments:
+    - -- DROP, -- CREATE, -- SELECT comments
+    - Row count references (e.g., -- 0 Rows)
+    - ID references (e.g., -- REPORT_ID: 0011)
+    - Step/process headers (e.g., -- STEP 1: CREATE TARGET TABLE --)
+    - Other standard single-line comments
+    - REMOVE all comments that:
+    - Start and end with --# (e.g., --# REMOVE THIS COMMENT --#)
+
+    DATE & CYCLE HANDLING:
+    - BASE_CYCLE = extracted month (Mon_YY) from commission END DATE in SRF
+    - PUBLISH_CYCLE = Jul_25 unless otherwise explicitly stated
+    - Replace all date-specific table names with the new SRF period
+
+    COMMISSION LOGIC:
+    - Use only the commission rate, targets, and logic from the current SRF
+    - Never reuse incentive structures or logic from prior examples
+    - Follow logic and structure only from the provided SRF and KPI/target tables
+
+    DETAIL TABLES LOGIC (FOR SRFs WITH MULTIPLE INCENTIVES)
+
+    - For each commission/incentive:
+    - Create a separate detail table
+    - Include any required temp/intermediate tables
+    - Insert to AD_HOC_DATA using:
+    - Correct AMOUNT_TYPE_ID
+    - Appropriate classifier/tag
+    - Register each detail via PROC_COMMISSION_DETAIL_SETUP:
+    - Use meaningful level names (e.g., 'SELECTED DENO DETAILS')
+    - FINALIZE_REPORT_ADHOC must:
+    - Register/publish all detail lines
+    - Follow SRF reporting expectations exactly
+    - If only one incentive:
+    - Proceed using only one detail table through full pipeline
+
+    --------------------------------------------------------------------------------
+    ADDITIONAL RULES
+    --------------------------------------------------------------------------------
+
+    - All calculations, filters, joins, agent list references must follow SRF logic
+    - Use only provided/supplied input or target tables
+    - Never guess values or default to old SRFs
+    - Follow structure and sequence of provided reference SQL
+
+    --------------------------------------------------------------------------------
+    OUTPUT FORMAT
+    --------------------------------------------------------------------------------
+
+    - Oracle SQL script only
+    - No markdown, explanations, or external commentary
+    - Output must be ready to execute
+
+    """

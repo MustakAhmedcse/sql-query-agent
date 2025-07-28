@@ -197,8 +197,8 @@ class EmbeddingManager:
                 "include": ["documents", "metadatas", "distances"]
             }
             
-            if where_clause:
-                search_kwargs["where"] = where_clause
+            # if where_clause:
+            #     search_kwargs["where"] = where_clause
             
             results = self.collection.query(**search_kwargs)
             

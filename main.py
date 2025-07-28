@@ -114,7 +114,7 @@ class CommissionAIAssistant:
             print(f"❌ Initialization failed: {str(e)}")
             return False
     
-    def generate_sql_for_srf(self, srf_text):
+    def generate_sql_for_srf(self, srf_text, target=None):
         """
         SRF text থেকে SQL query generate করি
         """
@@ -137,7 +137,7 @@ class CommissionAIAssistant:
             
             # Step 2: Format context
             print("2️⃣ Preparing context for AI...")
-            formatted_context = self.rag_system.format_context_for_llm(context)
+            formatted_context = self.rag_system.format_context_for_llm(context,target)
             
             
             # Step 3: Generate SQL

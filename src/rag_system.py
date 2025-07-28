@@ -55,7 +55,7 @@ class RAGSystem:
                 'all_similar': []
             }
     
-    def format_context_for_llm(self, context: Dict) -> str:
+    def format_context_for_llm(self, context: Dict,target=None) -> str:
         """
         LLM এর জন্য context format করি
         """
@@ -91,7 +91,9 @@ class RAGSystem:
             <NEW_SRF> -- (for which SQL query needs to be generated)
             {query_srf}
             </NEW_SRF>
-
+            
+            {f"<TARGET>{target}</TARGET>" if target else ""}
+        
             """
         
         

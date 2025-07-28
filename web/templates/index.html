@@ -530,7 +530,16 @@
                         id="srfText" 
                         rows="8" 
                         placeholder="Enter your SRF (Sales Report Format) content here...&#10;&#10;Example:&#10;Commission Calculation Report for MyBL Campaign&#10;Period: 1st to 15th April 2025&#10;Commission Type: Hourly Commission&#10;Rate: 2% of revenue&#10;Target: Active MSISDN with data usage"
-                        required></textarea>
+                        required>
+                    </textarea>                    
+                </div>
+
+                <div class="input-group">
+                    <label for="targetupload">Target Upload (Optional)</label>
+                    <textarea 
+                        id="targetupload" 
+                        rows="4" 
+                        placeholder="Enter target table statucture."></textarea>
                 </div>
                 
                 <div style="text-align: center;">
@@ -828,6 +837,7 @@
           // Generate SQL
         async function generateSQL() {
             const srfText = document.getElementById('srfText').value.trim();
+            const targetText = document.getElementById('targetupload').value.trim();
             
             if (!srfText) {
                 alert('Please enter SRF content');
@@ -851,7 +861,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        srf_text: srfText
+                        srf_text: srfText,
+                        target:targetText
                     })
                 });
                 
