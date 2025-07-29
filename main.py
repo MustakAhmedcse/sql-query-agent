@@ -126,19 +126,10 @@ class CommissionAIAssistant:
         
         try:
             print(f"\n🔍 Processing SRF request...")
-
-            result = self.cleaned_srf_text(srf_text)
-            if result['success'] is False:
-                return {
-                    'success': False,
-                    'error': " Failed to clean SRF text",
-                }
-            cleaned_srf = result['response']
-
-            print(f"SRF length: {len(cleaned_srf)} characters")
+            print(f"SRF length: {len(srf_text)} characters")
               # Step 1: Retrieve similar examples
             print("1️⃣ Finding similar examples...")
-            context = self.rag_system.retrieve_context(cleaned_srf, max_results=settings.MAX_RETRIEVAL_RESULTS)
+            context = self.rag_system.retrieve_context(srf_text, max_results=settings.MAX_RETRIEVAL_RESULTS)
             
             quality_analysis = self.rag_system.analyze_retrieval_quality(context)
             print(f"   Quality: {quality_analysis['quality']}")

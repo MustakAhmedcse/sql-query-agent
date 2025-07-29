@@ -300,9 +300,17 @@ async def upload_srf_file(file: UploadFile = File(...)):
                 )
             else:
                 # Document file processed successfully
+
+                result = assistant.cleaned_srf_text(result.get('text', ''))
+                if result['success'] is False:
+                    return FileUploadResponse(
+                        success=False,
+                        error=result.get('error', 'Failed to clean SRF text')
+                    )
+                
                 return FileUploadResponse(
                     success=True,
-                    text=result.get('text', ''),
+                    text=result.get('response', ''),
                     file_type='document'
                 )
         else:
