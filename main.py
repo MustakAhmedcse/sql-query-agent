@@ -126,10 +126,19 @@ class CommissionAIAssistant:
         
         try:
             print(f"\n🔍 Processing SRF request...")
-            print(f"SRF length: {len(srf_text)} characters")
+
+            result = self.cleaned_srf_text(srf_text)
+            if result['success'] is False:
+                return {
+                    'success': False,
+                    'error': " Failed to clean SRF text",
+                }
+            cleaned_srf = result['response']
+
+            print(f"SRF length: {len(cleaned_srf)} characters")
               # Step 1: Retrieve similar examples
             print("1️⃣ Finding similar examples...")
-            context = self.rag_system.retrieve_context(srf_text, max_results=settings.MAX_RETRIEVAL_RESULTS)
+            context = self.rag_system.retrieve_context(cleaned_srf, max_results=settings.MAX_RETRIEVAL_RESULTS)
             
             quality_analysis = self.rag_system.analyze_retrieval_quality(context)
             print(f"   Quality: {quality_analysis['quality']}")
@@ -177,7 +186,62 @@ class CommissionAIAssistant:
                 'success': False,
                 'error': str(e)
             }
-    
+    def cleaned_srf_text(self, srf_text):
+        """
+        SRF text থেকে unnecessary characters remove করি
+        """
+
+        prompt = f""""
+        <sample format>
+
+        # Commission Business Logics: DD HIT Campaign_27th to 31st May25
+
+        *Commission Name:* DD HIT Campaign_27th to 31st May25  
+        *Start Date:* 27-May-2025  
+        *End Date:* 31-May-2025  
+        *Commission Receiver Channel:* Distributor
+
+        *Commission Business Logics:*
+        - *KPI:* EV Recharge (All Valid C2S Recharges)
+        - *Target:* Distributor has a target and it will be given by Business Team
+        - *Mapping:* Agent list of 31st May'25 will be considered
+        - *Commission Calculation Logics:*
+            - Selected Deno (709) will be considered for performance calculation.
+            - General mathematical rounding: below 0.5 will be rounded down, ≥0.5 rounded up for achievement calculation.
+            - Upon achieving Deno HIT target (Count of 709 denomination), Distributor will be given achievement-based incentives.
+            - Maximum Achievement capping is 200%.
+            - Achievement Slab:
+                | Achievement        | Incentives     |
+                |-------------------|---------------|
+                | 200% and Above    | TARGET*2*50   |
+                | 100% and Above    | HIT*50        |
+                | Below 100%        | 0             |
+
+        *Detail formats:*
+        - *Detail 1:* DD_CODE, TARGET, HIT, ACH_PER, COMMISSION
+        - *Detail 2:* DD_CODE, RETAILER_CODE, RET_MSISDN, CUSTOMER_MSISDN, RECHARGE_AMOUNT
+
+        </sample format>
+
+        <srf text>
+
+            {srf_text} 
+
+        </srf text>
+        """
+
+        result = self.sql_generator.call_openAI_API([
+                    {
+                        "role": "system",
+                        "content": "You are an expert in understanding SRF texts. Your job is format <srf text> based on the <sample format> provided. Do not Include any extra information or comments"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ])
+        return result
+
     def get_system_status(self):
         """
         System status check করি

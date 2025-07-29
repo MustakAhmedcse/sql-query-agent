@@ -262,6 +262,7 @@ class FileProcessor:
                 # Read CSV file
                 df = pd.read_csv(tmp_file_path, nrows=max_rows)
                 
+                
                 # Convert to string representation
                 data_text = df.to_string(index=False)
                 
