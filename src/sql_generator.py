@@ -591,6 +591,7 @@ class SQLGenerator:
     - Insert to AD_HOC_DATA using:
     - Correct AMOUNT_TYPE_ID
     - Appropriate classifier/tag
+    - Register each detail via PROC_COMMISSION_DETAIL_SETUP:
     - Register only first detail via PROC_COMMISSION_DETAIL_SETUP:
     - Use meaningful level names (e.g., 'SELECTED DENO DETAILS')
     - FINALIZE_REPORT_ADHOC must:
