@@ -79,10 +79,6 @@ class RAGSystem:
             {srf_text}
             </REFERENCE_SRF>
 
-            <REFERENCE_INSTRUCTIONS>
-             {Reference_Instructions}
-            </REFERENCE_INSTRUCTIONS>
-
             <REFERENCE_SQL_CODE>
             {sql_query}
             {Report_Setup_Query}

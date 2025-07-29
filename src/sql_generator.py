@@ -604,8 +604,8 @@ class SQLGenerator:
     - All calculations, filters, joins, agent list references must follow SRF logic
     - Use only provided/supplied input or target tables
     - Never guess values or default to old SRFs
-    - Follow structure and sequence of provided reference SQL
     - Do not use any value of reference SQL that is not explicitly stated in the SRF
+    - Follow structure and sequence of provided reference SQL
 
     --------------------------------------------------------------------------------
     OUTPUT FORMAT
