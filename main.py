@@ -210,7 +210,7 @@ class CommissionAIAssistant:
 
         *Detail formats:*
         - *Detail 1:* DD_CODE, TARGET, HIT, ACH_PER, COMMISSION
-        - *Detail 2:* DD_CODE, RETAILER_CODE, RET_MSISDN, CUSTOMER_MSISDN, RECHARGE_AMOUNT
+        - *Detail 2:* DD_CODE, RETAILER_CODE, RET_MSISDN, CUSTOMER_MSISDN,RECHARGE_AMOUNT
 
         </sample format>
 
@@ -220,11 +220,13 @@ class CommissionAIAssistant:
 
         </srf text>
         """
-
-        result = self.sql_generator.call_openAI_API([
+        system_prompt = """
+        You are an expert in understanding SRF texts. Your job is format <srf text> based on the <sample format> provided. Do not Include any extra information or comments
+        """
+        result = self.sql_generator.call_openAI_API([   
                     {
                         "role": "system",
-                        "content": "You are an expert in understanding SRF texts. Your job is format <srf text> based on the <sample format> provided. Do not Include any extra information or comments"
+                        "content": system_prompt
                     },
                     {
                         "role": "user",

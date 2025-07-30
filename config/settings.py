@@ -56,9 +56,9 @@ class Settings:
     RAG_RESOURCE_LEVEL = os.getenv("RAG_RESOURCE_LEVEL", "medium").lower()  # low, medium, high
     
     # ChromaDB HNSW Configuration
-    HNSW_M = int(os.getenv("HNSW_M", "16"))
-    HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "200"))
-    HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "100"))
+    HNSW_M = int(os.getenv("HNSW_M", "32"))
+    HNSW_EF_CONSTRUCTION = int(os.getenv("HNSW_EF_CONSTRUCTION", "400"))
+    HNSW_EF_SEARCH = int(os.getenv("HNSW_EF_SEARCH", "256"))
     
     # =============================================================================
     # DATA PATHS
