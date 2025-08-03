@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Commission SQL Generator</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px; 
+            background-color: #f5f5f5;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }
+        .header h1 {
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+        .section { 
+            margin: 20px 0; 
+            padding: 20px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .form-group { 
+            margin: 15px 0; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold;
+            color: #555;
+        }
+        textarea, input[type="text"], input[type="password"] { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        button { 
+            background: #007bff; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px 5px 5px 0;
+            transition: background-color 0.3s;
+        }
+        button:hover { 
+            background: #0056b3; 
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result { 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 4px; 
+            margin-top: 15px;
+            border-left: 4px solid #007bff;
+        }
+        .error { 
+            background: #f8d7da; 
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+        .success { 
+            background: #d4edda; 
+            color: #155724;
+            border-left-color: #28a745;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left-color: #ffc107;
+        }
+        .sql-output { 
+            background: #f8f8f8; 
+            padding: 15px; 
+            font-family: 'Courier New', monospace; 
+            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .step-container {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .step-header {
+            background: #e9ecef;
+            padding: 12px 15px;
+            border-bottom: 1px solid #ddd;
+            cursor: pointer;
+            user-select: none;
+        }
+        .step-header:hover {
+            background: #dee2e6;
+        }
+        .step-content {
+            padding: 15px;
+            background: white;
+        }
+        .step-meta {
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .feature-item {
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 6px;
+            border-left: 4px solid #2196f3;
+        }
+        .feature-item h4 {
+            margin: 0 0 8px 0;
+            color: #1565c0;
+        }
+        .feature-item p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Commission SQL Generator</h1>
+            <p>Generate step-by-step SQL queries for commission calculations using LangGraph and LLM</p>
+        </div>
+
+        <div class="feature-list">
+            <div class="feature-item">
+                <h4>🤖 LLM-Powered</h4>
+                <p>Uses OpenAI GPT-4 for intelligent SQL generation</p>
+            </div>
+            <div class="feature-item">
+                <h4>📋 Metadata Extraction</h4>
+                <p>Automatically extracts business rules from SRF documents</p>
+            </div>
+            <div class="feature-item">
+                <h4>🔄 Step-by-Step</h4>
+                <p>Breaks complex commission logic into manageable steps</p>
+            </div>
+            <div class="feature-item">
+                <h4>✅ Production Ready</h4>
+                <p>Generates complete, executable SQL scripts</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 SRF Input</h2>
+            <div class="form-group">
+                <label for="srf-text">SRF Requirements:</label>
+                <textarea id="srf-text" rows="8" placeholder="Commission Name: Your Campaign Name
+Start Date: YYYY-MM-DD
+End Date: YYYY-MM-DD
+Commission Receiver Channel: Distributor/Retailer
+
+Commission Business Logics:
+- KPI: [Type of KPI]
+- Target: [Target description]
+- Mapping: [Mapping logic]
+- Commission Calculation: [Calculation rules]
+- Bonus Logic: [Additional incentives]
+
+Paste your complete SRF requirements here..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="target-tables">Target Tables Structure:</label>
+                <textarea id="target-tables" rows="6" placeholder="TEMP_TARGET_TABLE_1:
+CLUSTER_NAME, VARCHAR2(50), Cluster name
+REGION, VARCHAR2(50), Region name
+DD_CODE, VARCHAR2(20), Distributor code
+TARGET_AMOUNT, NUMBER, Target amount
+INCENTIVE_RATE, NUMBER, Incentive rate
+
+TEMP_TARGET_TABLE_2:
+PRODUCT_CODE, VARCHAR2(20), Product code
+PRODUCT_NAME, VARCHAR2(100), Product name
+COMMISSION_RATE, NUMBER, Commission rate
+
+Enter your target table structures here..."></textarea>
+            </div>
+            <button onclick="generateSQL()" id="generate-btn">🚀 Generate SQL</button>
+            <button onclick="loadSampleSRF()" style="background: #6c757d;">📄 Load Sample Data</button>
+            <div id="generation-result" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- Final SQL Script Section -->
+        <div class="section" id="final-script-section" style="display: none;">
+            <h2>📜 Complete SQL Script</h2>
+            <p>This is the complete, ready-to-execute SQL script combining all steps:</p>
+            <div style="margin-bottom: 15px;">
+                <button onclick="downloadSQL()">📥 Download SQL Script</button>
+                <button onclick="copyFinalScript()" style="background: #28a745;">📋 Copy to Clipboard</button>
+            </div>
+            <div class="sql-output" id="final-script-content" style="max-height: 400px; overflow-y: auto;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>💾 Generated SQL Steps</h2>
+            <div id="sql-steps" style="display: none;">
+                <div style="margin-bottom: 15px;">
+                    <button onclick="downloadSQL()">📥 Download SQL Script</button>
+                    <button onclick="downloadReport()">📊 Download Report</button>
+                    <button onclick="toggleAllSteps()" id="toggle-btn">🔽 Collapse All</button>
+                </div>
+                <div id="steps-list"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>ℹ️ How to Use</h2>
+            <ol>
+                <li><strong>Prepare your SRF:</strong> Copy your commission calculation requirements into the SRF field</li>
+                <li><strong>Define Target Tables:</strong> Specify your target table structures in the format:
+                    <code>TABLE_NAME:<br>COLUMN_NAME, TYPE, Description</code></li>
+                <li><strong>Set Environment:</strong> Ensure your OpenAI API key is set in environment variables</li>
+                <li><strong>Generate SQL:</strong> Click "Generate SQL" to create step-by-step queries</li>
+                <li><strong>Review & Download:</strong> Review the generated steps and download the complete SQL script</li>
+                <li><strong>Execute:</strong> Run the generated SQL in your database client</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        let currentState = null;
+        let stepsExpanded = true;
+        
+        async function generateSQL() {
+            const srfText = document.getElementById('srf-text').value;
+            const targetTables = document.getElementById('target-tables').value;
+            
+            if (!srfText.trim()) {
+                alert('Please enter SRF requirements');
+                return;
+            }
+            const resultDiv = document.getElementById('generation-result');
+            const generateBtn = document.getElementById('generate-btn');
+            // Show loading state
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading"></div>Generating SQL steps... This may take a moment.';
+            resultDiv.className = 'result';
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '⏳ Generating...';
+            try {
+                const response = await fetch('/generate-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        srf_text: srfText,
+                        target_tables: targetTables
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentState = data.state;
+                    
+                    // Display the final SQL script prominently first
+                    displayFinalScript(data.state.final_script);
+                    
+                    // Then display individual steps
+                    displaySQLSteps(data.state.sql_steps);
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Generated ${data.state.sql_steps.length} SQL steps successfully!<br>
+                        <strong>📄 Complete SQL script is ready for execution - see below!</strong>`;
+                    
+                    // Show warnings if any
+                    if (data.state.warnings && data.state.warnings.length > 0) {
+                        resultDiv.innerHTML += `<br><br><strong>Warnings:</strong><ul>`;
+                        data.state.warnings.forEach(warning => {
+                            resultDiv.innerHTML += `<li>${warning}</li>`;
+                        });
+                        resultDiv.innerHTML += `</ul>`;
+                    }
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Error: ${data.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network error: ${error.message}`;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '🚀 Generate SQL';
+            }
+        }
+        
+        function displayFinalScript(finalScript) {
+            const finalScriptSection = document.getElementById('final-script-section');
+            const finalScriptContent = document.getElementById('final-script-content');
+            
+            if (finalScript && finalScript.trim()) {
+                finalScriptContent.textContent = finalScript;
+                finalScriptSection.style.display = 'block';
+                
+                // Scroll to the final script section smoothly
+                setTimeout(() => {
+                    finalScriptSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                finalScriptSection.style.display = 'none';
+            }
+        }
+        
+        function copyFinalScript() {
+            if (!currentState || !currentState.final_script) {
+                alert('No SQL script available to copy');
+                return;
+            }
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(currentState.final_script).then(() => {
+                    showCopySuccess();
+                }).catch(err => {
+                    console.error('Clipboard API failed, trying fallback:', err);
+                    fallbackCopyToClipboard(currentState.final_script);
+                });
+            } else {
+                // Fallback for older browsers or non-HTTPS contexts
+                fallbackCopyToClipboard(currentState.final_script);
+            }
+        }
+        
+        function fallbackCopyToClipboard(text) {
+            // Create a temporary textarea element
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                showCopySuccess();
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                // Show the text in a dialog for manual copying
+                prompt('Copy this SQL script manually (Ctrl+C):', text);
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+        
+        function showCopySuccess() {
+            // Find the copy button by its onclick attribute
+            const copyBtn = document.querySelector('button[onclick="copyFinalScript()"]');
+            if (copyBtn) {
+                const originalText = copyBtn.innerHTML;
+                const originalBackground = copyBtn.style.background;
+                copyBtn.innerHTML = '✅ Copied!';
+                copyBtn.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                    copyBtn.style.background = originalBackground;
+                }, 2000);
+            }
+        }
+        
+        function displaySQLSteps(steps) {
+            const stepsDiv = document.getElementById('sql-steps');
+            const stepsList = document.getElementById('steps-list');
+            
+            stepsList.innerHTML = '';
+            
+            steps.forEach(step => {
+                const stepDiv = document.createElement('div');
+                stepDiv.className = 'step-container';
+                
+                const headerId = `step-header-${step.step_number}`;
+                const contentId = `step-content-${step.step_number}`;
+                
+                stepDiv.innerHTML = `
+                    <div class="step-header" onclick="toggleStep('${contentId}', '${headerId}')" id="${headerId}">
+                        <strong>Step ${step.step_number}: ${step.name}</strong>
+                        <span style="float: right;">▶️</span>
+                    </div>
+                    <div class="step-content" id="${contentId}" style="display: none;">
+                        <div class="step-meta">
+                            <strong>Description:</strong> ${step.description}<br>
+                            <strong>Dependencies:</strong> ${step.depends_on ? step.depends_on.join(', ') : 'None'}
+                        </div>
+                        <div class="sql-output">${step.sql_query}</div>
+                    </div>
+                `;
+                stepsList.appendChild(stepDiv);
+            });
+            
+            // Update the toggle button text since all steps start collapsed
+            const toggleBtn = document.getElementById('toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '🔼 Expand All';
+            }
+            stepsExpanded = false;
+            
+            stepsDiv.style.display = 'block';
+        }
+        
+        function toggleStep(contentId, headerId) {
+            const content = document.getElementById(contentId);
+            const header = document.getElementById(headerId);
+            const arrow = header.querySelector('span');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                arrow.textContent = '🔽';
+            } else {
+                content.style.display = 'none';
+                arrow.textContent = '▶️';
+            }
+        }
+        
+        function toggleAllSteps() {
+            const contents = document.querySelectorAll('.step-content');
+            const headers = document.querySelectorAll('.step-header span');
+            const toggleBtn = document.getElementById('toggle-btn');
+            
+            if (stepsExpanded) {
+                contents.forEach(content => content.style.display = 'none');
+                headers.forEach(arrow => arrow.textContent = '▶️');
+                toggleBtn.innerHTML = '🔼 Expand All';
+                stepsExpanded = false;
+            } else {
+                contents.forEach(content => content.style.display = 'block');
+                headers.forEach(arrow => arrow.textContent = '🔽');
+                toggleBtn.innerHTML = '🔽 Collapse All';
+                stepsExpanded = true;
+            }
+        }
+        
+        function downloadSQL() {
+            if (!currentState || !currentState.final_script) {
+                alert('No SQL script available for download');
+                return;
+            }
+            
+            const element = document.createElement('a');
+            const file = new Blob([currentState.final_script], {type: 'text/sql'});
+            element.href = URL.createObjectURL(file);
+            element.download = 'commission_calculation.sql';
+            element.click();
+        }
+        
+        function downloadReport() {
+            if (!currentState || !currentState.summary_report) {
+                alert('No report available for download');
+                return;
+            }
+            
+            const element = document.createElement('a');
+            const file = new Blob([currentState.summary_report], {type: 'text/markdown'});
+            element.href = URL.createObjectURL(file);
+            element.download = 'generation_report.md';
+            element.click();
+        }
+        
+        function loadSampleSRF() {
+            const sampleSRF = `# Commission Business Logics: Distributor Double Dhamaka Deno Campaign_10th to 15th Aug24
+
+*Commission Name:* Distributor Double Dhamaka Deno Campaign_10th to 15th Aug24  
+*Start Date:* 10-Aug-2024  
+*End Date:* 15-Aug-2024  
+*Commission Receiver Channel:* Distributor
+
+*Commission Business Logics:*
+- *KPI:* Deno Recharge
+- *Target:* DD will be given Deno Recharge targets. (Target will be provided by B2C)
+- *Mapping:* Agent list of 11th July'24 will be considered
+- *Commission Calculation Logics:*
+    - Selected Deno (199, 229, 249, 299, 399, 499, 599, 699, 799, 899) will be considered for performance calculation.
+    - General mathematical rounding: below 0.5 will be rounded down, ≥0.5 rounded up for achievement calculation.
+    - Upon achieving Selected Deno Recharge target (Cumulative of DENO), Distributor will be given incentives (DD wise Deno Recharge Target and incentives amount will be shared by B2C).
+    - Double Dhamaka: Upon achieving all bundle Target, 0.5% additional Incentives will be given on recharge amount. (DD wise all bundle recharge and All bundle list target will be shared by B2C).
+
+*Detail formats:*
+- *Detail 1:* DD Code, Region, Cluster, DD Recharge Target for Selected Deno, DD Recharge Achievement for Selected Deno, % DD recharge Achievement for Selected Deno, Commission Amount for Selected Deno, DD Recharge Target for ALL Deno, DD Recharge Achievement for ALL Deno, % DD recharge Achievement for All Deno, Commission Amount for ALL Deno, Total Commission Amount
+- *Detail 2:* Deno Recharge Date, Cluster, Region, DD Code, RSO Code, RSO MSISDN, Retailer Code, Retailer MSISDN, Customer MSISDN, Deno Amount, Deno Recharge Amount`;
+
+            const sampleTargetTables = `TEMP_FOR_DENO_CAMP_TAR_15AUG24:
+CLUSTER_NAME, VARCHAR2(50),
+REGION, VARCHAR2(50),
+DD_CODE, VARCHAR2(20),
+DD_NAME, VARCHAR2(100),
+SELECTED_REC_TARGET, NUMBER,
+SELECTED_REC_INCENTIVE, NUMBER,
+ALL_BUNDLE_TARGET, NUMBER
+
+TEMP_FOR_DDD_DN_LIST_15_AUG24:
+DENO_AMOUNT, NUMBER,
+DENO_TYPE, VARCHAR2(20)`;
+            
+            document.getElementById('srf-text').value = sampleSRF;
+            document.getElementById('target-tables').value = sampleTargetTables;
+        }
+        
+        // Auto-save form data to localStorage
+        function saveFormData() {
+            const srfText = document.getElementById('srf-text').value;
+            const targetTables = document.getElementById('target-tables').value;
+            localStorage.setItem('commission_srf_text', srfText);
+            localStorage.setItem('commission_target_tables', targetTables);
+        }
+        
+        function loadFormData() {
+            const savedSRF = localStorage.getItem('commission_srf_text');
+            const savedTargetTables = localStorage.getItem('commission_target_tables');
+            if (savedSRF) {
+                document.getElementById('srf-text').value = savedSRF;
+            }
+            if (savedTargetTables) {
+                document.getElementById('target-tables').value = savedTargetTables;
+            }
+        }
+        
+        // Load saved data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFormData();
+            
+            // Auto-save on input
+            document.getElementById('srf-text').addEventListener('input', saveFormData);
+            document.getElementById('target-tables').addEventListener('input', saveFormData);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+{
+  "EV_RECHARGE_COM_DAILY": {
+    "name": "EV_RECHARGE_COM_DAILY",
+    "columns": [
+      {
+        "name": "RETAILER_MSISDN",
+        "type": "VARCHAR2(20 BYTE)",
+        "description": "Retailer MSISDN"
+      },
+      {
+        "name": "SUB_MSISDN",
+        "type": "VARCHAR2(20 BYTE)",
+        "description": "Subscriber MSISDN"
+      },
+      {
+        "name": "TOP_UP_DATE",
+        "type": "DATE",
+        "description": "Recharge date"
+      },
+      {
+        "name": "TOP_UP_TIME",
+        "type": "VARCHAR2(10 BYTE)",
+        "description": "Recharge time"
+      },
+      {
+        "name": "RECHARGE_AMOUNT",
+        "type": "NUMBER",
+        "description": "Recharge amount"
+      },
+      {
+        "name": "SERVICE_CLASS_ID",
+        "type": "NUMBER",
+        "description": "Service class ID"
+      },
+      {
+        "name": "SERVICE_TYPE",
+        "type": "VARCHAR2(100 BYTE)",
+        "description": "Service type has only data [\"Pre-paid\",\"Post-paid\"]"
+      },
+      {
+        "name": "CALL_AND_CONTROL_FLAG",
+        "type": "VARCHAR2(100 BYTE)",
+        "description": "This column has only data [\"Call & Control\",\"Non Call & Control\"]"
+      },
+      {
+        "name": "REFERENCE_ID",
+        "type": "VARCHAR2(200 BYTE)",
+        "description": "This id for identify from which system recharge has done.Some Id Has prefix like BLAPP-BL-6491597861,DBBL24073196354364 etc. using prefic can identify BLAPP-BL,DBBL"
+      },
+      {
+        "name": "TRANSFER_ID",
+        "type": "VARCHAR2(500 BYTE)",
+        "description": "This column value is unique for each row"
+      },
+      {
+        "name": "GATEWAY_CODE",
+        "type": "VARCHAR2(50 BYTE)",
+        "description": "This column id from identifying from which gateway using recharge has done. sample data GW041, SMSC461MO1, qvantel, GW060, wintel, GW043, GW049, GW035, GW025, sylvanpran, GW053, shub, UPAY, GW030, GW056, GW003, GW055, GW051, GW002, IRIS, SMSC461MO2, GW023, EXTGW, SMSCWEBT, SMSCWEBTP, GW001, sheba, BDSMART, doer, dnsNew"
+      }
+    ],
+    "description": "Daily recharge transaction data"
+  },
+  "AGENT_LIST_DAILY": {
+    "name": "AGENT_LIST_DAILY",
+    "columns": [
+      {
+        "name": "TOPUP_MSISDN",
+        "type": "VARCHAR2(12 BYTE)",
+        "description": "Agent MSISDN"
+      },
+      {
+        "name": "RETAILER_CODE",
+        "type": "VARCHAR2(50 BYTE)",
+        "description": "Retailer code",
+        "constraints": "NOT NULL"
+      },
+      {
+        "name": "RETAILERTYPE",
+        "type": "NUMBER",
+        "description": "Retailer type",
+        "constraints": "NOT NULL"
+      },
+      {
+        "name": "DIST_CODE",
+        "type": "VARCHAR2(20 BYTE)",
+        "description": "Distributor code",
+        "constraints": "NOT NULL"
+      },
+      {
+        "name": "SERVICE_POINT",
+        "type": "VARCHAR2(100 BYTE)",
+        "description": "This column has only data [\"Ryze\",\"KRO\",\"NA+RYZE\",\"BSSP\",\"BSP\",\"ASA\",\"RYZE Online\",\"TESTING\",\"Retailer\",\"RBSP\",\"BSP+RYZE\",\"RBSP+RYZE\",\"3GSeller\",\"FWA\"]"
+      },
+      {
+        "name": "DATA_DATE",
+        "type": "DATE",
+        "description": "Data snapshot date"
+      },
+      {
+        "name": "REGION_NAME",
+        "type": "VARCHAR2(100 BYTE)",
+        "description": "Region name"
+      },
+      {
+        "name": "RETAILER_NAME",
+        "type": "VARCHAR2(250 BYTE)",
+        "description": "Retailer name"
+      },
+      {
+        "name": "ENABLED",
+        "type": "CHAR(1 CHAR)",
+        "description": "This column has only data ['Y','N']"
+      },
+      {
+        "name": "SIMSELLER",
+        "type": "CHAR(1 CHAR)",
+        "description": "This column has only data ['Y','N']"
+      },
+      {
+        "name": "ITOPUPSELLER",
+        "type": "CHAR(1 CHAR)",
+        "description": "This column has only data ['Y','N']"
+      },
+      {
+        "name": "FLAG",
+        "type": "NUMBER",
+        "description": "This column has only data [1,2]"
+      },
+      {
+        "name": "DD_MASTER_MSISDN",
+        "type": "VARCHAR2(13 BYTE)",
+        "description": "Distributor master MSISDN"
+      }
+    ],
+    "description": "Daily agent hierarchy and mapping data"
+  },
+  "COMMISSION_REPORT": {
+    "name": "COMMISSIONREPORT",
+    "columns": [
+      {
+        "name": "REPORTID",
+        "type": "NUMBER",
+        "description": "Report ID"
+      },
+      {
+        "name": "REPORTNAME",
+        "type": "VARCHAR2(200)",
+        "description": "Report name"
+      },
+      {
+        "name": "DESCRIPTION",
+        "type": "VARCHAR2(500)",
+        "description": "Report description"
+      },
+      {
+        "name": "CREATED_DATE",
+        "type": "DATE",
+        "description": "Creation date"
+      }
+    ],
+    "description": "Commission report master table"
+  },
+  "COMMISSION_CYCLE": {
+    "name": "COMMISSIONCYCLE",
+    "columns": [
+      {
+        "name": "CYCLEID",
+        "type": "NUMBER",
+        "description": "Cycle ID"
+      },
+      {
+        "name": "CYCLEDESCRIPTION",
+        "type": "VARCHAR2(100)",
+        "description": "Cycle description (e.g., Mar_25)"
+      },
+      {
+        "name": "START_DATE",
+        "type": "DATE",
+        "description": "Cycle start date"
+      },
+      {
+        "name": "END_DATE",
+        "type": "DATE",
+        "description": "Cycle end date"
+      },
+      {
+        "name": "STATUS",
+        "type": "VARCHAR2(20)",
+        "description": "Cycle status"
+      }
+    ],
+    "description": "Commission cycle master table"
+  },
+  "COMMISSION_CYCLE_REPORTS": {
+    "name": "COMMISSIONCYCLEREPORTS",
+    "columns": [
+      {
+        "name": "REPORT_CYCLE_ID",
+        "type": "NUMBER",
+        "description": "Report cycle ID"
+      },
+      {
+        "name": "REPORTID",
+        "type": "NUMBER",
+        "description": "Report ID"
+      },
+      {
+        "name": "CYCLEID",
+        "type": "NUMBER",
+        "description": "Cycle ID"
+      },
+      {
+        "name": "STATUS",
+        "type": "VARCHAR2(20)",
+        "description": "Report cycle status"
+      },
+      {
+        "name": "CREATED_DATE",
+        "type": "DATE",
+        "description": "Creation date"
+      }
+    ],
+    "description": "Commission cycle reports mapping table"
+  },
+  "AD_HOC_DATA": {
+    "name": "AD_HOC_DATA",
+    "columns": [
+      {
+        "name": "ID",
+        "type": "NUMBER",
+        "description": "Primary key ID"
+      },
+      {
+        "name": "REPORT_CYCLE_ID",
+        "type": "NUMBER",
+        "description": "Report cycle ID"
+      },
+      {
+        "name": "CHANNEL_CODE",
+        "type": "VARCHAR2(20)",
+        "description": "Channel/Distributor code"
+      },
+      {
+        "name": "COMMISSION_AMOUNT",
+        "type": "NUMBER",
+        "description": "Commission amount"
+      },
+      {
+        "name": "CREATED_DATE",
+        "type": "DATE",
+        "description": "Creation date"
+      }
+    ],
+    "description": "Ad-hoc commission data table"
+  }
+}

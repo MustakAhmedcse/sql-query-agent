@@ -1,0 +1,26 @@
+Commission Name: Distributor Double Dhamaka Deno Campaign_10th to 15th Aug24
+Start Date: 10-Aug-2024
+End Date: 15-Aug-2024
+Commission Receiver Channel: Distributor
+
+Commission Business Logics:
+- KPI: Deno Recharge
+- Target: DD will be given Deno Recharge targets. (Target will be provided by B2C)
+- Mapping: Agent list of 15th Aug'24 will be considered
+- Commission Calculation Logics:
+    - Selected Deno (199, 229, 249, 299, 399, 499, 599, 699, 799, 899) will be considered for performance calculation.
+    - General mathematical rounding: below 0.5 will be rounded down, ≥0.5 rounded up for achievement calculation.
+    - Upon achieving Selected Deno Recharge target (Cumulative of DENO), Distributor will be given incentives (DD wise Deno Recharge Target and incentives amount will be shared by B2C).
+    - Double Dhamaka: Upon achieving all bundle Target, 0.5% additional Incentives will be given on recharge amount. (DD wise all bundle recharge and All bundle list target will be shared by B2C).
+
+Detail formats:
+- Detail 1: DD Code, Region, Cluster, DD Recharge Target for Selected Deno, DD Recharge Achievement for Selected Deno, % DD recharge Achievement for Selected Deno, Commission Amount for Selected Deno, DD Recharge Target for ALL Deno, DD Recharge Achievement for ALL Deno, % DD recharge Achievement for All Deno, Commission Amount for ALL Deno, Total Commission Amount
+- Detail 2: Deno Recharge Date, Cluster, Region, DD Code, RSO Code, RSO MSISDN, Retailer Code, Retailer MSISDN, Customer MSISDN, Deno Amount, Deno Recharge Amount
+
+Target Tables:
+- TEMP_FOR_DENO_CAMP_TAR_15AUG24: Contains targets per DD
+- TEMP_FOR_DDD_DN_LIST_15_AUG24: Contains all bundle deno list
+
+Expected Output Tables:
+- TEMP_FOR_DD_DENO_DET1_15AUG24: Summary detail (Detail 1)
+- TEMP_FOR_DD_DENO_DET2_15AUG24: Transaction detail (Detail 2)

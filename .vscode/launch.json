@@ -4,31 +4,29 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Debug run.py (web)",
+      "name": "Python: Debug CLI Generate",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/run.py",
+      "program": "${workspaceFolder}/cli.py",
       "console": "integratedTerminal",
       "justMyCode": false,
-      "args": ["web"]
+      "args": ["generate", "--srf-file", "sample_srf.txt"]
     },
     {
-      "name": "Python: Debug run.py (cli)",
+      "name": "Python: Debug API Server",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/run.py",
+      "program": "${workspaceFolder}/api.py",
       "console": "integratedTerminal",
-      "justMyCode": false,
-      "args": ["cli"]
+      "justMyCode": false
     },
     {
-      "name": "Python: Debug run.py (setup)",
+      "name": "Python: Debug Test Demo",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/run.py",
+      "program": "${workspaceFolder}/test_demo.py",
       "console": "integratedTerminal",
-      "justMyCode": false,
-      "args": ["setup"]
+      "justMyCode": false
     }
   ]
 }
