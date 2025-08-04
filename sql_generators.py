@@ -154,12 +154,14 @@ class SQLStepGenerator:
     
     def _generate_setup_step(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> SQLStep:
         """Generate setup and data cleaning step"""
-        schema_context = self._format_schemas_for_prompt(schemas)
+        permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
+        target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
         
         prompt = self.step_templates["setup"].format(
             srf_text=srf_text,
-            available_schemas=schema_context,
+            available_schemas=permanent_schemas,
+            target_tables=target_tables,
             previous_queries=previous_context
         )
         
@@ -176,12 +178,14 @@ class SQLStepGenerator:
     
     def _generate_mapping_step(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> SQLStep:
         """Generate mapping table creation step"""
-        schema_context = self._format_schemas_for_prompt(schemas)
+        permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
+        target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
         
         prompt = self.step_templates["mapping"].format(
             srf_text=srf_text,
-            available_schemas=schema_context,
+            available_schemas=permanent_schemas,
+            target_tables=target_tables,
             previous_queries=previous_context
         )
         
@@ -198,12 +202,14 @@ class SQLStepGenerator:
     
     def _generate_calculation_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> List[SQLStep]:
         """Generate calculation logic steps (can be multiple based on SRF complexity)"""
-        schema_context = self._format_schemas_for_prompt(schemas)
+        permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
+        target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
         
         prompt = self.step_templates["calculation"].format(
             srf_text=srf_text,
-            available_schemas=schema_context,
+            available_schemas=permanent_schemas,
+            target_tables=target_tables,
             previous_queries=previous_context
         )
         
@@ -226,12 +232,14 @@ class SQLStepGenerator:
         if not any(keyword in srf_text.lower() for keyword in ['detail', 'output table', 'temp_for_', 'insert into']):
             return []
         
-        schema_context = self._format_schemas_for_prompt(schemas)
+        permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
+        target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
         
         prompt = self.step_templates["detail_tables"].format(
             srf_text=srf_text,
-            available_schemas=schema_context,
+            available_schemas=permanent_schemas,
+            target_tables=target_tables,
             previous_queries=previous_context
         )
         
@@ -248,13 +256,17 @@ class SQLStepGenerator:
     
     def _generate_report_setup_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> List[SQLStep]:
         """Generate report setup and publishing steps"""
-        schema_context = self._format_schemas_for_prompt(schemas)
+        permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
+        target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         prompt = self.step_templates["report_setup"].format(
             srf_text=srf_text,
-            available_schemas=schema_context,
-            previous_queries=previous_context
+            available_schemas=permanent_schemas,
+            target_tables=target_tables,
+            previous_queries=previous_context,
+            current_date=current_date
         )
         
         response = self.llm.invoke(prompt)
@@ -279,7 +291,9 @@ class SQLStepGenerator:
             context += f"{query}\n\n"
         
         context += "IMPORTANT: You can reference any temp tables, CTEs, or result sets created in the above queries.\n"
-        context += "Do NOT recreate existing tables/CTEs. Build upon what's already been created.\n\n"
+        context += "Do NOT recreate existing tables/CTEs. Build upon what's already been created.\n"
+        context += "CRITICAL: If previous steps have already filtered data, use that filtered data directly - do NOT re-apply the same filters.\n"
+        context += "The data from previous steps is already clean and filtered according to SRF requirements.\n\n"
         
         return context
     
@@ -298,6 +312,68 @@ class SQLStepGenerator:
             schema_text += "\n"
         
         return schema_text
+    
+    def _format_target_tables_for_prompt(self, schemas: Dict) -> str:
+        """Format target table schemas separately for inclusion in prompts"""
+        target_schema_text = "Target table schemas (provided by user with data):\n\n"
+        
+        # Filter for target tables (these are typically the ones uploaded or provided by user)
+        target_tables = {k: v for k, v in schemas.items() if self._is_target_table(k, v)}
+        
+        if not target_tables:
+            target_schema_text += "No target tables provided.\n\n"
+            return target_schema_text
+        
+        for table_name, schema in target_tables.items():
+            target_schema_text += f"Table: {table_name}\n"
+            target_schema_text += f"Description: {schema.get('description', 'User-provided target table with data')}\n"
+            target_schema_text += "Columns:\n"
+            
+            for col in schema.get('columns', []):
+                target_schema_text += f"  - {col['name']} ({col['type']}): {col['description']}\n"
+            
+            target_schema_text += "\n"
+        
+        return target_schema_text
+    
+    def _is_target_table(self, table_name: str, schema: Dict) -> bool:
+        """Determine if a table is a target table (user-provided) vs permanent table"""
+        # Target tables are typically those that don't have standard permanent table patterns
+        permanent_patterns = [
+            'AGENT_LIST_DAILY', 'COMMISSIONREPORT', 'COMMISSIONCYCLE', 
+            'COMMISSIONCYCLEREPORTS', 'AD_HOC_DATA', 'TOPUP_TRANSACTION',
+            'RECHARGE_TRANSACTION', 'BALANCE_TRANSACTION'
+        ]
+        
+        # Check if table name matches permanent table patterns
+        table_upper = table_name.upper()
+        for pattern in permanent_patterns:
+            if pattern in table_upper:
+                return False
+        
+        # Also check description for hints
+        description = schema.get('description', '').lower()
+        if any(keyword in description for keyword in ['permanent', 'system', 'platform', 'daily']):
+            return False
+        
+        return True
+    
+    def _format_permanent_schemas_for_prompt(self, schemas: Dict) -> str:
+        """Format only permanent table schemas for inclusion in prompts"""
+        schema_text = "Available permanent table schemas:\n\n"
+        
+        # Filter for permanent tables only
+        permanent_tables = {k: v for k, v in schemas.items() if not self._is_target_table(k, v)}
+        
+        for table_name, schema in permanent_tables.items():
+            schema_text += f"Table: {table_name}\n"
+            schema_text += f"Description: {schema.get('description', 'No description')}\n"
+            schema_text += "Columns:\n"
+            
+            for col in schema.get('columns', []):
+                schema_text += f"  - {col['name']} ({col['type']}): {col['description']}\n"
+            
+            schema_text += "\n"
     
     def _extract_sql_from_response(self, response_content: str) -> str:
         """Extract SQL code from LLM response"""
@@ -319,49 +395,60 @@ class SQLStepGenerator:
     
     def _get_setup_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "previous_queries"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries"],
             template="""
-            You are a SQL expert generating setup queries for commission calculation.
-            
+            You are a Oracle SQL expert generating setup queries for commission calculation.
+
             SRF Requirements:
             {srf_text}
-            
+
+            Available Permanent Tables (for reference and joins):
             {available_schemas}
-            
+
+            Target Tables:
+            {target_tables}
+
             Previous Step Queries:
             {previous_queries}
-            
+
             Generate SQL for SETUP step that:
-            1. Creates temp_target table from the target table with validated data (no cleaning needed)
-            2. Ensures all necessary join columns are available (DD_CODE, etc.)
-            3. Sets up temporary structures for subsequent processing
-            4. Includes proper comments explaining the setup
-            5. If previous queries exist, build upon them rather than recreating tables
-            
-            IMPORTANT: All data is already validated and clean. Focus on creating temp_target table with proper join columns.
-            The temp_target table should include all columns needed for mapping and calculations.
-            
-            ORACLE COMPATIBILITY REQUIREMENTS:
-            - Use Oracle SQL syntax and functions
-            - Use Oracle date functions (TO_DATE, SYSDATE, etc.)
-            - Use Oracle string functions (SUBSTR, INSTR, etc.)
-            - Use Oracle-specific CREATE TABLE syntax
-            - Ensure all SQL is compatible with Oracle database
-            
+            1. References the target table(s) provided by user (all data is already validated and clean - no need to create new tables)
+            2. If multiple target tables are provided, reference each separately as they will be used in different parts of the query according to SRF requirements
+            3. Ensures all necessary join columns are available (DD_CODE, etc.) for mapping with permanent tables
+            4. Sets up temporary structures for subsequent processing if needed
+            5. Includes proper comments explaining the setup
+            6. If previous queries exist, build upon them rather than recreating tables
+            7. Apply initial filtering criteria explicitly mentioned in the SRF (this will be the ONLY filtering step)
+
+            IMPORTANT: Target tables are provided by user with data and ready to use. Do NOT create new tables from them.
+            Simply reference the target tables directly in your queries with proper join columns.
+            The permanent tables listed above are for reference and joins (like AGENT_LIST_DAILY for mapping).
+
+            If multiple target tables are provided, do NOT combine them. Each target table serves a different purpose in the SRF logic and should be referenced separately.
+
+            FILTERING STRATEGY: 
+            - Apply all necessary SRF filters in this setup step so subsequent steps can use clean, pre-filtered data
+            - This prevents duplicate filtering in later steps
+            - Subsequent steps will use the filtered results from this step
+
             Return only executable Oracle SQL code with comments.
             """
         )
     
     def _get_mapping_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "previous_queries"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries"],
             template="""
-            You are a SQL expert generating mapping queries for commission calculation.
+            You are a Oracle SQL expert generating mapping queries for commission calculation.
             
             SRF Requirements:
             {srf_text}
             
+            Available Permanent Tables (for reference and joins):
             {available_schemas}
+
+            Target Tables:
+            {target_tables}
             
             Previous Step Queries:
             {previous_queries}
@@ -370,20 +457,21 @@ class SQLStepGenerator:
             1. Creates mapping table between target table and retailer MSISDN
             2. Uses AGENT_LIST_DAILY for the mapping date(data_date) specified in SRF
             3. Joins target DD_CODE with agent hierarchy (TOPUP_MSISDN, RETAILER_CODE, etc.)
-            4. Includes all necessary fields for subsequent calculations
-            5. Handles the receiver channel logic (Distributor/Retailer)
-            6. References existing temp tables/CTEs from previous steps instead of recreating them
+            4. If previous steps have filtered data, use the already-filtered results - do NOT re-apply filters
+            5. Includes all necessary fields for subsequent calculations
+            6. Handles the receiver channel logic (Distributor/Retailer)
+            7. References existing temp tables/CTEs from previous steps instead of recreating them
             
-            Pay attention to the mapping date mentioned in the SRF.
-            Ensure proper joins based on the receiver channel type.
-            Build upon tables already created in previous steps.
+            Pay attention to:
+            - Mapping date mentioned in the SRF
+            - If previous steps applied filters, use that filtered data directly
+            - Only apply new filters if explicitly required by SRF and not already applied in previous steps
+            - Build upon tables already created in previous steps
             
-            ORACLE COMPATIBILITY REQUIREMENTS:
-            - Use Oracle SQL syntax and functions
-            - Use Oracle date functions (TO_DATE, TRUNC, etc.) for date operations
-            - Use Oracle join syntax (ANSI or Oracle traditional joins)
-            - Use Oracle-specific table creation and indexing
-            - Ensure all SQL is compatible with Oracle database
+            CRITICAL RULE: 
+            - If previous queries have already filtered the data according to SRF requirements, do NOT re-filter
+            - Use the filtered datasets from previous steps as your source data
+            - Only add filters if they are new requirements from SRF not covered in previous steps
             
             Return only executable Oracle SQL code with comments.
             """
@@ -391,14 +479,18 @@ class SQLStepGenerator:
     
     def _get_calculation_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "previous_queries"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries"],
             template="""
-            You are a SQL expert generating commission calculation logic.
+            You are a Oracle SQL expert generating commission calculation logic.
             
             SRF Requirements:
             {srf_text}
             
+            Available Permanent Tables (for reference and joins):
             {available_schemas}
+
+            Target Tables:
+            {target_tables}
             
             Previous Step Queries:
             {previous_queries}
@@ -409,7 +501,7 @@ class SQLStepGenerator:
             3. Applies target achievement logic with proper rounding rules
             4. Calculates commission amounts based on achievement percentages
             5. Implements any bonus or incentive logic mentioned
-            6. Uses appropriate aggregation and filtering based on SRF requirements
+            6. Uses the already-filtered and mapped data from previous steps - do NOT re-filter
             7. References tables/CTEs created in previous steps instead of recreating them
             
             Pay special attention to:
@@ -420,13 +512,9 @@ class SQLStepGenerator:
             - Commission rate applications
             - Using mapped data from previous mapping step
             
-            ORACLE COMPATIBILITY REQUIREMENTS:
-            - Use Oracle SQL syntax and functions
-            - Use Oracle mathematical functions (ROUND, TRUNC, MOD, etc.)
-            - Use Oracle analytic functions (ROW_NUMBER, RANK, SUM OVER, etc.)
-            - Use Oracle aggregation and window functions
-            - Use Oracle CASE statements and conditional logic
-            - Ensure all calculations use Oracle-compatible syntax
+            IMPORTANT: Use the pre-filtered data from previous steps as your source.
+            Do NOT re-apply filters that were already applied in setup or mapping steps.
+            Focus on calculations and business logic, not data filtering.
             
             Return only executable Oracle SQL code with detailed comments explaining each calculation step.
             """
@@ -434,14 +522,18 @@ class SQLStepGenerator:
     
     def _get_detail_tables_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "previous_queries"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries"],
             template="""
-            You are a SQL expert generating detail table creation queries.
+            You are a Oracle SQL expert generating detail table creation queries.
             
             SRF Requirements:
             {srf_text}
             
+            Available Permanent Tables (for reference and joins):
             {available_schemas}
+
+            Target Tables:
+            {target_tables}
             
             Previous Step Queries:
             {previous_queries}
@@ -454,6 +546,7 @@ class SQLStepGenerator:
             5. Uses proper table naming conventions from SRF
             6. Adds metadata columns (creation date, etc.)
             7. Uses calculated results from previous steps instead of recalculating
+            8. Includes ONLY the data that meets SRF criteria - no additional filtering
             
             Look for:
             - "Detail formats" section in SRF
@@ -462,13 +555,8 @@ class SQLStepGenerator:
             - Required column lists for each detail level
             - Use results from previous calculation steps
             
-            ORACLE COMPATIBILITY REQUIREMENTS:
-            - Use Oracle SQL syntax and table creation statements
-            - Use Oracle INSERT INTO ... SELECT syntax
-            - Use Oracle date/time functions (SYSDATE, TO_CHAR, etc.)
-            - Use Oracle sequence generators (NEXTVAL) for ID columns
-            - Use Oracle-specific data types (VARCHAR2, NUMBER, DATE, etc.)
-            - Ensure all DDL and DML is Oracle-compatible
+            IMPORTANT: Use only the filtered and calculated data from previous steps.
+            Do NOT apply additional filters in detail table creation beyond what was already applied in calculation steps.
             
             Return only executable Oracle SQL code with table creation and data insertion statements.
             """
@@ -476,17 +564,23 @@ class SQLStepGenerator:
     
     def _get_report_setup_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "previous_queries"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries", "current_date"],
             template="""
-            You are a SQL expert generating report setup and publishing queries for commission calculation.
+            You are a Oracle SQL expert generating report setup and publishing queries for commission calculation.
             
             SRF Requirements:
             {srf_text}
-            
+
+            Available Permanent Tables (for reference and joins):
             {available_schemas}
+
+            Target Tables:
+            {target_tables}
             
             Previous Step Queries:
             {previous_queries}
+            
+            Current Datetime: {current_date}
             
             Generate SQL for REPORT SETUP AND PUBLISHING that:
             1. Sets up the commission report in the commission platform
@@ -540,15 +634,6 @@ class SQLStepGenerator:
               Can include up to 9 detail table pairs (table_name, level_description)
             
             IMPORTANT: Analyze previous step queries to identify all detail tables created and include them all in PROC_COMMISSION_DETAIL_SETUP
-            
-            ORACLE COMPATIBILITY REQUIREMENTS:
-            - Use Oracle SQL syntax and functions throughout
-            - Use Oracle PL/SQL procedure call syntax (EXEC or EXECUTE)
-            - Use Oracle date formatting functions (TO_CHAR, TO_DATE)
-            - Use Oracle sequence generators (AD_HOC_DATA_ID.NEXTVAL)
-            - Use Oracle COMMIT statements for transaction control
-            - Use Oracle-specific data types and functions
-            - Ensure all procedures calls are Oracle PL/SQL compatible
             
             Return only executable Oracle SQL code with proper comments and placeholder updates.
             """
