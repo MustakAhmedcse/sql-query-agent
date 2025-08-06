@@ -26,6 +26,12 @@ class MetadataExtractor:
             - end_date: End date (YYYY-MM-DD format) 
             - receiver_channel: Who receives commission (Distributor/Retailer/etc.)
             - kpi_type: Type of KPI mentioned
+            - has_detail_tables: true/false - whether SRF contains explicit detail table specifications
+            
+            For has_detail_tables, look for keywords like: "detail format", "detail table", "output table", 
+            "expected output", "detail level", "detail 1", "detail 2", "summary detail", "transaction detail",
+            "create table", "output format", AND check if actual table structure/column specifications are provided.
+            Only return true if BOTH detail table keywords AND structure specifications are found.
             
             Return ONLY valid JSON format with no additional text.
             """
@@ -62,11 +68,20 @@ class MetadataExtractor:
     def _validate_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and clean extracted metadata"""
         # Ensure required fields exist
-        required_fields = ["commission_name", "start_date", "end_date", "receiver_channel", "kpi_type"]
+        required_fields = ["commission_name", "start_date", "end_date", "receiver_channel", "kpi_type", "has_detail_tables"]
         
         for field in required_fields:
             if field not in metadata:
-                metadata[field] = "Not specified"
+                if field == "has_detail_tables":
+                    metadata[field] = False
+                else:
+                    metadata[field] = "Not specified"
+        
+        # Ensure has_detail_tables is boolean
+        if isinstance(metadata.get("has_detail_tables"), str):
+            metadata["has_detail_tables"] = metadata["has_detail_tables"].lower() in ["true", "yes", "1"]
+        elif not isinstance(metadata.get("has_detail_tables"), bool):
+            metadata["has_detail_tables"] = False
         
         # Validate date formats
         for date_field in ["start_date", "end_date"]:
@@ -85,7 +100,8 @@ class MetadataExtractor:
             "start_date": "2024-01-01",
             "end_date": "2024-01-31",
             "receiver_channel": "Distributor",
-            "kpi_type": "Recharge"
+            "kpi_type": "Recharge",
+            "has_detail_tables": False
         }
 
 class SQLStepGenerator:
@@ -125,15 +141,15 @@ class SQLStepGenerator:
             for calc_step in calculation_steps:
                 previous_queries.append(calc_step.sql_query)
             
-            # Step 4: Insert into detail tables (if specified in SRF)
-            detail_steps = self._generate_detail_table_steps(srf_text, schemas, previous_queries)
+            # Step 4: Insert into detail tables (if specified in metadata)
+            detail_steps = self._generate_detail_table_steps(srf_text, schemas, previous_queries, state.get("metadata", {}))
             if detail_steps:
                 steps.extend(detail_steps)
                 for detail_step in detail_steps:
                     previous_queries.append(detail_step.sql_query)
             
             # Step 5: Report setup and publishing (always generate this step)
-            report_setup_steps = self._generate_report_setup_steps(srf_text, schemas, previous_queries)
+            report_setup_steps = self._generate_report_setup_steps(srf_text, schemas, previous_queries, state.get("metadata", {}))
             steps.extend(report_setup_steps)
             for report_step in report_setup_steps:
                 previous_queries.append(report_step.sql_query)
@@ -226,10 +242,12 @@ class SQLStepGenerator:
             validation_query="-- Validate calculations: Check commission amounts and achievement percentages"
         )]
     
-    def _generate_detail_table_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> List[SQLStep]:
-        """Generate detail table creation steps if mentioned in SRF"""
-        # Check if SRF mentions detail tables
-        if not any(keyword in srf_text.lower() for keyword in ['detail', 'output table', 'temp_for_', 'insert into']):
+    def _generate_detail_table_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str], metadata: Dict) -> List[SQLStep]:
+        """Generate detail table creation steps if specified in metadata"""
+        # Check metadata for detail table requirement
+        has_detail_tables = metadata.get("has_detail_tables", False)
+        
+        if not has_detail_tables:
             return []
         
         permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
@@ -254,19 +272,26 @@ class SQLStepGenerator:
             validation_query="-- Validate detail tables: Check record counts and data completeness"
         )]
     
-    def _generate_report_setup_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str]) -> List[SQLStep]:
+    def _generate_report_setup_steps(self, srf_text: str, schemas: Dict, previous_queries: List[str], metadata: Dict = None) -> List[SQLStep]:
         """Generate report setup and publishing steps"""
         permanent_schemas = self._format_permanent_schemas_for_prompt(schemas)
         target_tables = self._format_target_tables_for_prompt(schemas)
         previous_context = self._format_previous_queries_for_prompt(previous_queries)
         current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Use metadata to determine if detail tables exist, fallback to previous query analysis
+        if metadata:
+            has_detail_tables = metadata.get("has_detail_tables", False)
+        else:
+            has_detail_tables = self._has_detail_tables_in_previous_queries(previous_queries)
+        
         prompt = self.step_templates["report_setup"].format(
             srf_text=srf_text,
             available_schemas=permanent_schemas,
             target_tables=target_tables,
             previous_queries=previous_context,
-            current_date=current_date
+            current_date=current_date,
+            has_detail_tables=has_detail_tables
         )
         
         response = self.llm.invoke(prompt)
@@ -296,6 +321,32 @@ class SQLStepGenerator:
         context += "The data from previous steps is already clean and filtered according to SRF requirements.\n\n"
         
         return context
+    
+    def _has_detail_tables_in_previous_queries(self, previous_queries: List[str]) -> bool:
+        """Check if detail tables were created in previous queries"""
+        if not previous_queries:
+            return False
+        
+        # Look for common detail table patterns in previous queries
+        detail_table_patterns = [
+            'TEMP_FOR_D1',
+            'TEMP_FOR_D2', 
+            'TEMP_FOR_DETAIL',
+            'CREATE TABLE TEMP_',
+            'CREATE OR REPLACE TABLE TEMP_',
+            'INSERT INTO TEMP_FOR_',
+            'detail.*table',
+            'summary.*table',
+            'transaction.*table'
+        ]
+        
+        all_queries = ' '.join(previous_queries).upper()
+        
+        for pattern in detail_table_patterns:
+            if pattern.upper().replace('.*', '') in all_queries:
+                return True
+                
+        return False
     
     def _format_schemas_for_prompt(self, schemas: Dict) -> str:
         """Format table schemas for inclusion in prompts"""
@@ -411,27 +462,16 @@ class SQLStepGenerator:
             Previous Step Queries:
             {previous_queries}
 
-            Generate SQL for SETUP step that:
-            1. References the target table(s) provided by user (all data is already validated and clean - no need to create new tables)
-            2. If multiple target tables are provided, reference each separately as they will be used in different parts of the query according to SRF requirements
-            3. Ensures all necessary join columns are available (DD_CODE, etc.) for mapping with permanent tables
-            4. Sets up temporary structures for subsequent processing if needed
-            5. Includes proper comments explaining the setup
-            6. If previous queries exist, build upon them rather than recreating tables
-            7. Apply initial filtering criteria explicitly mentioned in the SRF (this will be the ONLY filtering step)
+            Requirements:
+            1. Reference target tables directly (pre-filtered data, no WHERE clauses needed)
+            2. Setup join columns (DD_CODE, etc.) for mapping with permanent tables
+            3. Create temporary structures if needed for subsequent processing
+            4. Multiple target tables serve different purposes - reference separately
 
-            IMPORTANT: Target tables are provided by user with data and ready to use. Do NOT create new tables from them.
-            Simply reference the target tables directly in your queries with proper join columns.
-            The permanent tables listed above are for reference and joins (like AGENT_LIST_DAILY for mapping).
+            CRITICAL: Target tables contain only relevant data - use ALL rows without filtering.
+            Only filter permanent tables if needed for date ranges or joins.
 
-            If multiple target tables are provided, do NOT combine them. Each target table serves a different purpose in the SRF logic and should be referenced separately.
-
-            FILTERING STRATEGY: 
-            - Apply all necessary SRF filters in this setup step so subsequent steps can use clean, pre-filtered data
-            - This prevents duplicate filtering in later steps
-            - Subsequent steps will use the filtered results from this step
-
-            Return only executable Oracle SQL code with comments.
+            Return executable Oracle SQL with comments.
             """
         )
     
@@ -459,8 +499,7 @@ class SQLStepGenerator:
             3. Joins target DD_CODE with agent hierarchy (TOPUP_MSISDN, RETAILER_CODE, etc.)
             4. If previous steps have filtered data, use the already-filtered results - do NOT re-apply filters
             5. Includes all necessary fields for subsequent calculations
-            6. Handles the receiver channel logic (Distributor/Retailer)
-            7. References existing temp tables/CTEs from previous steps instead of recreating them
+            6. References existing temp tables/CTEs from previous steps instead of recreating them
             
             Pay attention to:
             - Mapping date mentioned in the SRF
@@ -510,7 +549,6 @@ class SQLStepGenerator:
             - Target achievement thresholds
             - Bonus calculation conditions
             - Commission rate applications
-            - Using mapped data from previous mapping step
             
             IMPORTANT: Use the pre-filtered data from previous steps as your source.
             Do NOT re-apply filters that were already applied in setup or mapping steps.
@@ -524,87 +562,62 @@ class SQLStepGenerator:
         return PromptTemplate(
             input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries"],
             template="""
-            You are a Oracle SQL expert generating detail table creation queries.
+            Generate Oracle SQL for DETAIL TABLES step of commission calculation.
             
-            SRF Requirements:
-            {srf_text}
+            SRF: {srf_text}
+            Permanent Tables: {available_schemas}
+            Target Tables: {target_tables}
+            Previous Queries: {previous_queries}
             
-            Available Permanent Tables (for reference and joins):
-            {available_schemas}
-
-            Target Tables:
-            {target_tables}
+            Requirements:
+            1. Create tables ONLY if SRF provides detailed format specifications
+            2. Use exact SRF table naming (TEMP_FOR_*, etc.)
+            3. Include ONLY columns explicitly listed in SRF detail specs
+            4. Use calculated data from previous steps
+            5. If SRF lacks detail specifications, return comment explaining no details provided
             
-            Previous Step Queries:
-            {previous_queries}
+            CRITICAL: Only proceed if SRF contains explicit detail table format specifications.
+            If no detailed format is provided, return: -- No detail table specifications provided in SRF
             
-            Generate SQL for DETAIL TABLES that:
-            1. Creates output tables as specified in the SRF detail formats
-            2. Populates Detail 1 (summary level) with aggregated results
-            3. Populates Detail 2 (transaction level) with individual transaction details
-            4. Includes all columns mentioned in the SRF detail format specifications
-            5. Uses proper table naming conventions from SRF
-            6. Adds metadata columns (creation date, etc.)
-            7. Uses calculated results from previous steps instead of recalculating
-            8. Includes ONLY the data that meets SRF criteria - no additional filtering
-            
-            Look for:
-            - "Detail formats" section in SRF
-            - "Expected Output Tables" mentioned
-            - Table naming patterns (TEMP_FOR_*, etc.)
-            - Required column lists for each detail level
-            - Use results from previous calculation steps
-            
-            IMPORTANT: Use only the filtered and calculated data from previous steps.
-            Do NOT apply additional filters in detail table creation beyond what was already applied in calculation steps.
-            
-            Return only executable Oracle SQL code with table creation and data insertion statements.
+            Return executable Oracle SQL with CREATE and INSERT statements.
             """
         )
     
     def _get_report_setup_template(self) -> PromptTemplate:
         return PromptTemplate(
-            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries", "current_date"],
+            input_variables=["srf_text", "available_schemas", "target_tables", "previous_queries", "current_date", "has_detail_tables"],
             template="""
-            You are a Oracle SQL expert generating report setup and publishing queries for commission calculation.
+            Generate Oracle SQL for REPORT SETUP AND PUBLISHING step of commission calculation.
             
-            SRF Requirements:
-            {srf_text}
-
-            Available Permanent Tables (for reference and joins):
-            {available_schemas}
-
-            Target Tables:
-            {target_tables}
-            
-            Previous Step Queries:
-            {previous_queries}
-            
+            SRF: {srf_text}
+            Permanent Tables: {available_schemas}
+            Target Tables: {target_tables}
+            Previous Queries: {previous_queries}
             Current Datetime: {current_date}
+            Has Detail Tables: {has_detail_tables}
             
-            Generate SQL for REPORT SETUP AND PUBLISHING that:
-            1. Sets up the commission report in the commission platform
-            2. Retrieves report IDs, cycle IDs based on commission dates
-            3. Inserts calculated commission data into AD_HOC_DATA table
-            4. Sets up commission detail tables using PROC_COMMISSION_DETAIL_SETUP
-            5. Finalizes and publishes the report using FINALIZE_REPORT_ADHOC
+            Requirements:
+            1. Setup commission report in platform
+            2. Retrieve report IDs, cycle IDs based on commission dates
+            3. Insert calculated commission data into AD_HOC_DATA table
+            4. Setup commission detail tables ONLY if detail tables were created in previous steps
+            5. Finalize and publish the report
             
-            IMPORTANT TEMPLATE TO FOLLOW:
+            TEMPLATE:
             --------------------------------- REPORT SETUP QUERY -----------------------------------------
             
             -- PREPARE FOR REPORT PUBLISHING
             SELECT REPORTID REPORT_ID FROM COMMISSIONREPORT WHERE REPORTNAME = '[COMMISSION_NAME]';
             
-            -- SPECIAL INSTRUCTION : BASE_CYCLE = month of commission END DATE (Mar_25) --
+            -- BASE_CYCLE = month of commission END DATE (Mar_25)
             SELECT CYCLEID BASE_CYCLE_ID FROM COMMISSIONCYCLE WHERE CYCLEDESCRIPTION = '[END_DATE_MONTH_YEAR]';
             
-            --REPORT_CYCLE_ID : 0033 (UPDATE WITH ACTUAL REPORT CYCLE ID)
             SELECT REPORT_CYCLE_ID,* FROM COMMISSIONCYCLEREPORTS where REPORTID = [REPORT_ID] and CYCLEID = [BASE_CYCLE_ID];
             
             DELETE FROM AD_HOC_DATA WHERE REPORT_CYCLE_ID = [REPORT_CYCLE_ID];
             commit;
             
-            --INSERT THE CHANNEL WISE CALCULATED COMMISSION DATA
+            --INSERT CHANNEL WISE CALCULATED COMMISSION DATA
             INSERT INTO AD_HOC_DATA (ID, REPORT_CYCLE_ID, CHANNEL_CODE, COMMISSION_AMOUNT)
             SELECT AD_HOC_DATA_ID.NEXTVAL ID, [REPORT_CYCLE_ID] REPORT_CYCLE_ID, [CHANNEL_CODE_COLUMN], [COMMISSION_AMOUNT_COLUMN]
             FROM [DETAIL_TABLE_NAME];
@@ -612,7 +625,9 @@ class SQLStepGenerator:
             
             SELECT CYCLEID PUBLISH_CYCLE_ID FROM COMMISSIONCYCLE WHERE CYCLEDESCRIPTION = '[CURRENT_MONTH_YEAR]';
             
-            -- SET UP COMMISSION DETAILS IN COMMISSION PLATFORM
+            -- CONDITIONAL: Setup commission details ONLY if detail tables exist
+            -- If Has Detail Tables = True, include PROC_COMMISSION_DETAIL_SETUP
+            -- If Has Detail Tables = False, skip this step with comment
             -- PROC_COMMISSION_DETAIL_SETUP can take up to 9 detail tables
             -- Identify all detail tables created in previous steps and include them
             -- Format: PROC_COMMISSION_DETAIL_SETUP(<REPORT_TITLE>, <PUBLISH_CYCLE_ID>, <DETAIL1>, <LEVEL1>, <DETAIL2>, <LEVEL2>, ..., <DETAIL9>, <LEVEL9>)
@@ -633,7 +648,9 @@ class SQLStepGenerator:
               Example: 'TEMP_FOR_D1_CAMPAIGN_SUMMARY', 'Summary Details', 'TEMP_FOR_D2_CAMPAIGN_DETAIL', 'Transaction Details'
               Can include up to 9 detail table pairs (table_name, level_description)
             
-            IMPORTANT: Analyze previous step queries to identify all detail tables created and include them all in PROC_COMMISSION_DETAIL_SETUP
+            CRITICAL: Only include PROC_COMMISSION_DETAIL_SETUP if has_detail_tables=True
+            If has_detail_tables=False, add comment: -- No detail tables created, skipping PROC_COMMISSION_DETAIL_SETUP
+            
             
             Return only executable Oracle SQL code with proper comments and placeholder updates.
             """
