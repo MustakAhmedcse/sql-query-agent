@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Training Data - Commission AI Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .nav-links {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #667eea;
+            margin-right: 20px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-links a:hover {
+            background-color: #e9ecef;
+        }
+
+        .nav-links a.active {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .status-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .status-ready {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .input-section {
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .input-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+            line-height: 1.5;
+        }
+        
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .textarea-srf {
+            background-color: #f8f9fa;
+        }
+
+        .textarea-sql {
+            background-color: #f0f8f0;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .message-box {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            font-weight: 500;
+        }
+
+        .message-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .message-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        code {
+            background: rgba(0,0,0,0.1);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .form-row .btn {
+            margin: 0;
+        }
+
+        .examples-section {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .example-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .example-item:hover {
+            border-color: #667eea;
+        }
+
+        .example-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .example-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .example-content {
+            font-size: 0.9em;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .char-counter {
+            font-size: 0.8em;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .validation-tips {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .validation-tips h4 {
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .validation-tips ul {
+            margin-left: 20px;
+        }
+
+        .validation-tips li {
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .nav-links {
+                padding: 15px 20px;
+            }
+
+            .nav-links a {
+                display: block;
+                margin: 5px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Add Training Data</h1>
+            <p>Improve the AI model by adding new SRF-SQL pairs</p>
+        </div>
+
+        <div class="nav-links">
+            <a href="/">🏠 Home</a>
+            <a href="/add-training-data" class="active">📚 Add Training Data</a>
+            <a href="#" onclick="window.history.back()">← Back</a>
+        </div>
+        
+        <div class="main-content">
+            <!-- System Status -->
+            <div class="status-panel">
+                <h3>📊 System Status</h3>
+                <div id="systemStatus">
+                    <div class="status-item">
+                        <span>Training Data File:</span>
+                        <span class="status-badge status-ready" id="fileStatusBadge">Ready</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Total Training Pairs:</span>
+                        <span class="status-badge status-ready" id="totalPairsBadge">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Tips -->
+            <div class="validation-tips">
+                <h4>💡 Tips for Adding Quality Training Data</h4>
+                <ul>
+                    <li><strong>SRF Content:</strong> Include complete commission business logic with dates, targets, and calculation methods</li>
+                    <li><strong>SQL Query:</strong> Ensure the query is syntactically correct and follows the project patterns</li>
+                    <li><strong>Consistency:</strong> Use similar formatting and terminology as existing training data</li>
+                    <li><strong>Completeness:</strong> Include both the problem description and the complete solution</li>
+                </ul>
+            </div>
+              
+            <!-- Training Data Input Form -->
+            <div class="input-section">
+                <h3>✏️ Add New Training Pair</h3>
+                
+                <!-- Auto-regeneration Information -->
+                <div class="message-box message-info" style="margin-bottom: 20px;">
+                    <strong>🔄 Automatic Setup Command Execution:</strong><br>
+                    When you add a new SRF-SQL pair, the system will automatically execute <code>python run.py setup</code> to format training data and regenerate embeddings from the <code>srf_sql_pairs.jsonl</code> file. 
+                    This ensures the AI model immediately learns from your new examples using the same process as the VS Code debug configuration.
+                </div>
+                
+                <div class="input-group">
+                    <label for="trainingSRF">SRF Content *</label>
+                    <textarea 
+                        id="trainingSRF" 
+                        rows="10" 
+                        class="textarea-srf"
+                        placeholder="Enter the SRF (Sales Report Format) content for training...
+
+Example format:
+# Commission Business Logics: MyBL Campaign_1st to 15th Jan25
+**Commission Name:** Commission for MyBL Campaign_1st to 15th Jan25
+**Start Date:** 1-Jan-2025
+**End Date:** 15-Jan-2025
+**Commission Receiver Channel:** BL Self-channels (MYBL Channel)
+
+**Commission Business Logics:**
+- **KPI:** EV Recharge (All Valid C2S Recharges)
+- **Target:** Denomination and Date specific commission targets
+..."></textarea>
+                    <div class="char-counter" id="srfCharCounter">0 characters</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="trainingSQL">SQL Query *</label>
+                    <textarea 
+                        id="trainingSQL" 
+                        rows="12" 
+                        class="textarea-sql"
+                        placeholder="Enter the corresponding SQL query for the above SRF...
+
+Example format:
+--------------------------------- REPORT HELPER QUERY -----------------------------------------
+
+-- STEP 1: VERIFY SUPPORTING DATA
+SELECT * FROM TEMP_TABLE_NAME;
+
+-- STEP 2: COMMISSION CALCULATION QUERY START
+CREATE TABLE COMMISSION_TABLE AS
+WITH COMMISSION_CALCULATION AS (
+    SELECT ...
+)
+SELECT * FROM COMMISSION_CALCULATION;
+
+-- STEP 3: FINALIZE REPORT
+..."></textarea>
+                    <div class="char-counter" id="sqlCharCounter">0 characters</div>
+                </div>
+                
+                <div class="form-row">
+                    <button class="btn btn-primary" onclick="addTrainingData()" id="addButton">
+                        ➕ Add to Training Data
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearTrainingForm()">
+                        🗑️ Clear Form
+                    </button>
+                    <button class="btn btn-warning" onclick="validateData()">
+                        🔍 Validate Data
+                    </button>
+                </div>
+                
+                <div id="trainingMessage" class="message-box"></div>
+            </div>
+
+            <!-- Recent Additions -->
+            <div class="input-section">
+                <h3>📝 Recent Additions</h3>
+                <div id="recentAdditions" style="color: #666;">
+                    <p>Recent training data additions will appear here...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Character counters
+        document.getElementById('trainingSRF').addEventListener('input', function() {
+            document.getElementById('srfCharCounter').textContent = this.value.length + ' characters';
+        });
+
+        document.getElementById('trainingSQL').addEventListener('input', function() {
+            document.getElementById('sqlCharCounter').textContent = this.value.length + ' characters';
+        });
+
+        // Load system status on page load
+        window.onload = function() {
+            loadTrainingDataStats();
+        };
+
+        // Training data examples
+        const examples = {
+            hourly: {
+                srf: `# Commission Business Logics: MyBL Hourly_16th Mar25 to 31st Mar25
+**Commission Name:** Commission for MyBL Hourly_16th Mar25 to 31st Mar25  
+**Start Date:** 16-Mar-2025  
+**End Date:** 31-Mar-2025  
+**Commission Receiver Channel:** BL Self-channels (MYBL Channel)  
+
+**Commission Business Logics:**
+- **KPI:** EV Recharge (All Valid C2S Recharges)
+- **Target:** Time and Deno specific commission targets so no Target Required
+- **Mapping:** Retailer MSISDN: 01967021235
+- **Commission Calculation Logics:**
+    - BL-Self channel (MyBL) will receive deno and date specific commission
+    - Selected Deno (649, 548, 698, 798) will be considered for performance calculation
+    - All service class below 1000
+    - Only MyBL App recharge will be considered (Reference ID like 'BLAPP%')
+    - Customers can get cashback multiple times during the campaign period
+    - Hourly campaigns will get 2nd highest priority
+    - **Time and Deno Based Commission Structure:** 
+        - 16-Mar: 3:00pm-8:00pm (Deno 649: 166.67, Deno 548: 88.89)
+        - 17-Mar: 3:00pm-8:00pm (Deno 649: 166.67, Deno 548: 88.89)
+
+**Detail formats:**
+- **Detail 1:** RET_MSISDN, RECHARGE_AMOUNT, HIT, TOTAL_RECHARGE, COMMISSION_AMOUNT`,
+                sql: `--------------------------------- REPORT HELPER QUERY -----------------------------------------
+
+-- STEP 1: VERIFY SUPPORTING DATA
+SELECT * FROM TEMP_FOR_MYBL_HOURLY_31MAR25;
+
+-- STEP 2: COMMISSION CALCULATION QUERY START
+CREATE TABLE MY_BL_RECHARGE_MONTHLY_16_31MAR25 AS
+SELECT MY_BL_RECHARGE_MONTHLY_SEQ.NEXTVAL ID, RETAILER_MSISDN, SUB_MSISDN, TOP_UP_DATE, TOP_UP_TIME, RECHARGE_AMOUNT, SERVICE_TYPE, REFERENCE_ID
+FROM EV_RECHARGE_COM_DAILY 
+WHERE REFERENCE_ID LIKE 'BLAPP%'
+AND TOP_UP_DATE BETWEEN '16-Mar-25' AND '31-Mar-25'
+AND SERVICE_CLASS_ID <1000;
+
+-- STEP 3: FINALIZE REPORT
+EXEC FINALIZE_REPORT_ADHOC('Commission for MyBL Hourly_16th Mar25 to 31st Mar25', 0033,'Mar_25', 'Apr_25',290, 1);`
+            },
+            special: {
+                srf: `# Commission Business Logics: MyBL Special Day_16th Mar25 to 31st Mar25
+**Commission Name:** Commission for MyBL Special Day_16th Mar25 to 31st Mar25  
+**Start Date:** 16-Mar-2025  
+**End Date:** 31-Mar-2025  
+**Commission Receiver Channel:** BL Self-channels (MYBL Channel)  
+
+**Commission Business Logics:**
+- **KPI:** EV Recharge (All Valid C2S Recharges)
+- **Target:** Date and Deno specific commission targets so no Target Required
+- **Mapping:** Retailer MSISDN: 01967021235
+- **Commission Calculation Logics:**
+    - BL-Self channel (MyBL) will receive deno and date specific commission
+    - Selected Deno (699, 799, 307, 698, 798, 998, 397) will be considered for performance calculation
+    - Special day campaigns will get 3rd highest priority
+    - **Date and Deno Based Commission Structure:** 
+        - 16-Mar: Deno 699: 166.67, Deno 799: 200.00, Deno 307: 63.33
+
+**Detail formats:**
+- **Detail 1:** RET_MSISDN, RECHARGE_AMOUNT, HIT, TOTAL_RECHARGE, COMMISSION_AMOUNT`,
+                sql: `--------------------------------- REPORT HELPER QUERY -----------------------------------------
+
+-- STEP 1: VERIFY SUPPORTING DATA
+SELECT * FROM TEMP_FOR_MYBL_SPECIAL_31MAR25;
+
+-- STEP 2: COMMISSION CALCULATION QUERY START
+CREATE TABLE TEMP_FOR_D1_MYBL_SP_16_31MAR25 AS
+WITH RECHARGE_DETAIL AS (
+    SELECT 'Online' DD_CODE, ID, RETAILER_MSISDN RET_MSISDN, RECHARGE_AMOUNT, COMMISSION, TOP_UP_DATE
+    FROM MY_BL_RECHARGE_MONTHLY_16_31MAR25 EV 
+    INNER JOIN TEMP_FOR_MYBL_SPECIAL_31MAR25 DL ON RECHARGE_AMOUNT=DENO 
+    WHERE RETAILER_MSISDN IN ('01967021235')
+    AND (COMMISSION_FLAG IS NULL OR COMMISSION_FLAG='SPECIAL_DAY')
+)
+SELECT * FROM RECHARGE_DETAIL;
+
+-- STEP 3: FINALIZE REPORT
+EXEC FINALIZE_REPORT_ADHOC('Commission for MyBL Special Day_16th Mar25 to 31st Mar25', 0033,'Mar_25', 'Apr_25',290, 1);`
+            },
+            regular: {
+                srf: `# Commission Business Logics: MyBL_16th Mar25 to 31st Mar25
+**Commission Name:** Commission for MyBL_16th Mar25 to 31st Mar25  
+**Start Date:** 16-Mar-2025  
+**End Date:** 31-Mar-2025  
+**Commission Receiver Channel:** BL Self-channels (MYBL Channel)  
+
+**Commission Business Logics:**
+- **KPI:** EV Recharge (All Valid C2S Recharges)
+- **Target:** Date and Deno specific commission targets
+- **Mapping:** Retailer MSISDN: 01967021235
+- **Commission Calculation Logics:**
+    - BL-Self channel (MyBL) will receive deno and date-specific commission
+    - Selected Deno (118, 167, 169, 199, 307, 348, 397, 399, 448, 497, 548, 549, 649, 698, 798) will be considered
+    - Regular campaigns will get the lowest priority
+    - **Date and Deno Based Commission Structure:** 
+        - 16-Mar: Deno 118: 2.22, Deno 167: 18.89, Deno 169: 5.56
+
+**Detail formats:**
+- **Detail 1:** RET_MSISDN, RECHARGE_AMOUNT, HIT, TOTAL_RECHARGE, COMMISSION_AMOUNT`,
+                sql: `--------------------------------- REPORT HELPER QUERY -----------------------------------------
+
+-- STEP 1: VERIFY SUPPORTING DATA
+SELECT * FROM TEMP_FOR_MYBL_REG_16_31_MAR25;
+
+-- STEP 2: COMMISSION CALCULATION QUERY START
+CREATE TABLE TEMP_FOR_D1_MYBL_RE_16_31MAR25 AS
+WITH RECHARGE_DETAIL AS (
+    SELECT DISTINCT 'Online' DD_CODE, ID, RETAILER_MSISDN RET_MSISDN, RECHARGE_AMOUNT, COMMISSION, TOP_UP_DATE
+    FROM MY_BL_RECHARGE_MONTHLY_16_31MAR25 EV 
+    INNER JOIN TEMP_FOR_MYBL_REG_16_31_MAR25 DL ON RECHARGE_AMOUNT = DENO 
+    WHERE RETAILER_MSISDN IN('01967021235')
+    AND REFERENCE_ID LIKE 'BLAPP%'
+    AND (COMMISSION_FLAG IS NULL OR COMMISSION_FLAG='REGULAR')
+)
+SELECT * FROM RECHARGE_DETAIL;
+
+-- STEP 3: FINALIZE REPORT
+EXEC FINALIZE_REPORT_ADHOC('Commission for MyBL_16th Mar25 to 31st Mar25', 0033,'Mar_25', 'Apr_25',290, 1);`
+            }
+        };
+
+        // Load example data
+        function loadExample(type) {
+            if (examples[type]) {
+                document.getElementById('trainingSRF').value = examples[type].srf;
+                document.getElementById('trainingSQL').value = examples[type].sql;
+                
+                // Update character counters
+                document.getElementById('srfCharCounter').textContent = examples[type].srf.length + ' characters';
+                document.getElementById('sqlCharCounter').textContent = examples[type].sql.length + ' characters';
+                
+                showTrainingMessage('info', `Loaded ${type} campaign example. You can modify and add it to training data.`);
+            }
+        }
+
+        // Load training data statistics
+        async function loadTrainingDataStats() {
+            try {
+                const response = await fetch('/api/training-stats');
+                const stats = await response.json();
+                
+                document.getElementById('totalPairsBadge').textContent = `${stats.total_pairs} pairs`;
+                document.getElementById('fileStatusBadge').textContent = 'Ready';
+                document.getElementById('fileStatusBadge').className = 'status-badge status-ready';
+                
+                if (stats.error) {
+                    console.warn('Stats warning:', stats.error);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('totalPairsBadge').textContent = 'Error';
+                document.getElementById('fileStatusBadge').textContent = 'Error';
+                document.getElementById('fileStatusBadge').className = 'status-badge status-error';
+            }
+        }
+
+        // Add training data function
+        async function addTrainingData() {
+            const srfContent = document.getElementById('trainingSRF').value.trim();
+            const sqlQuery = document.getElementById('trainingSQL').value.trim();
+            const addButton = document.getElementById('addButton');
+            
+            // Validation
+            if (!srfContent) {
+                showTrainingMessage('error', 'SRF content is required');
+                return;
+            }
+            
+            if (!sqlQuery) {
+                showTrainingMessage('error', 'SQL query is required');
+                return;
+            }
+            
+            if (srfContent.length < 100) {
+                showTrainingMessage('error', 'SRF content seems too short. Please provide more detailed information.');
+                return;
+            }
+            
+            if (sqlQuery.length < 50) {
+                showTrainingMessage('error', 'SQL query seems too short. Please provide a complete query.');
+                return;
+            }
+            
+            // Disable button during submission
+            addButton.disabled = true;
+            addButton.textContent = '⏳ Adding & Regenerating...';
+            
+            try {
+                showTrainingMessage('info', 'Adding training data and running setup command to regenerate embeddings...');
+                
+                const response = await fetch('/api/add-srf-sql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        srf: srfContent,
+                        sql: sqlQuery
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.message.includes('setup command')) {
+                        showTrainingMessage('success', '✅ ' + result.message + ' The system is now ready with updated knowledge!');
+                    } else if (result.message.includes('manually')) {
+                        showTrainingMessage('warning', '⚠️ ' + result.message);
+                    } else {
+                        showTrainingMessage('success', '✅ ' + result.message);
+                    }
+                    clearTrainingForm();
+                    addToRecentAdditions(srfContent, sqlQuery);
+                    loadTrainingDataStats(); // Refresh stats
+                } else {
+                    showTrainingMessage('error', result.error || 'Failed to add training data');
+                }
+                
+            } catch (error) {
+                console.error('Error adding training data:', error);
+                showTrainingMessage('error', 'Network error: ' + error.message);
+            } finally {
+                // Re-enable button
+                addButton.disabled = false;
+                addButton.textContent = '➕ Add to Training Data';
+            }
+        }
+        
+        // Clear training form
+        function clearTrainingForm() {
+            document.getElementById('trainingSRF').value = '';
+            document.getElementById('trainingSQL').value = '';
+            document.getElementById('srfCharCounter').textContent = '0 characters';
+            document.getElementById('sqlCharCounter').textContent = '0 characters';
+            document.getElementById('trainingMessage').style.display = 'none';
+        }
+        
+        // Show training message
+        function showTrainingMessage(type, message) {
+            const messageDiv = document.getElementById('trainingMessage');
+            
+            // Set appropriate styling based on type
+            messageDiv.className = `message-box message-${type}`;
+            messageDiv.style.display = 'block';
+            messageDiv.textContent = message;
+            
+            // Auto-hide success messages after 5 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Validate data function
+        function validateData() {
+            const srfContent = document.getElementById('trainingSRF').value.trim();
+            const sqlQuery = document.getElementById('trainingSQL').value.trim();
+            
+            let issues = [];
+            
+            // SRF validation
+            if (!srfContent) {
+                issues.push('SRF content is required');
+            } else {
+                if (srfContent.length < 100) {
+                    issues.push('SRF content seems too short (less than 100 characters)');
+                }
+                if (!srfContent.includes('Commission Name:')) {
+                    issues.push('SRF should include "Commission Name:"');
+                }
+                if (!srfContent.includes('Start Date:') || !srfContent.includes('End Date:')) {
+                    issues.push('SRF should include Start Date and End Date');
+                }
+            }
+            
+            // SQL validation
+            if (!sqlQuery) {
+                issues.push('SQL query is required');
+            } else {
+                if (sqlQuery.length < 50) {
+                    issues.push('SQL query seems too short (less than 50 characters)');
+                }
+                if (!sqlQuery.toUpperCase().includes('SELECT')) {
+                    issues.push('SQL query should contain SELECT statements');
+                }
+                if (!sqlQuery.includes('--')) {
+                    issues.push('SQL query should include comments for clarity');
+                }
+            }
+            
+            if (issues.length === 0) {
+                showTrainingMessage('success', '✅ Validation passed! Data looks good.');
+            } else {
+                showTrainingMessage('error', '❌ Validation issues found:\n' + issues.join('\n• '));
+            }
+        }
+
+        // Add to recent additions
+        function addToRecentAdditions(srf, sql) {
+            const recentDiv = document.getElementById('recentAdditions');
+            const timestamp = new Date().toLocaleString();
+            
+            const additionItem = document.createElement('div');
+            additionItem.className = 'example-item';
+            additionItem.style.marginBottom = '10px';
+            
+            // Extract commission name from SRF
+            const nameMatch = srf.match(/\*\*Commission Name:\*\*\s*(.+)/);
+            const commissionName = nameMatch ? nameMatch[1].trim() : 'New Training Data';
+            
+            additionItem.innerHTML = `
+                <div class="example-title">${commissionName}</div>
+                <div class="example-content">Added on ${timestamp} - SRF: ${srf.length} chars, SQL: ${sql.length} chars</div>
+            `;
+            
+            // Insert at the top
+            if (recentDiv.firstChild && recentDiv.firstChild.tagName === 'P') {
+                recentDiv.removeChild(recentDiv.firstChild); // Remove placeholder
+            }
+            recentDiv.insertBefore(additionItem, recentDiv.firstChild);
+            
+            // Keep only last 5 additions
+            while (recentDiv.children.length > 5) {
+                recentDiv.removeChild(recentDiv.lastChild);
+            }
+        }
+    </script>
+</body>
+</html>

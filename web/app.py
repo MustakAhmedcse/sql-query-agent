@@ -79,6 +79,15 @@ class UpdateConfigRequest(BaseModel):
     openai_model: str = ""
     ollama_model: str = ""
 
+class AddSRFSQLRequest(BaseModel):
+    srf: str
+    sql: str
+
+class AddSRFSQLResponse(BaseModel):
+    success: bool
+    message: str = ""
+    error: str = ""
+
 # Initialize assistant
 @app.on_event("startup")
 async def startup_event():
@@ -110,6 +119,11 @@ async def startup_event():
 async def home(request: Request):
     """Home page"""
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/add-training-data", response_class=HTMLResponse)
+async def add_training_data_page(request: Request):
+    """Add training data page"""
+    return templates.TemplateResponse("add_training_data.html", {"request": request})
 
 @app.post("/api/generate-sql", response_model=SQLResponse)
 async def generate_sql(request: SRFRequest):
@@ -402,6 +416,137 @@ async def extract_excel_data(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/add-srf-sql", response_model=AddSRFSQLResponse)
+async def add_srf_sql_pair(request: AddSRFSQLRequest):
+    """Add new SRF-SQL pair to the training data and regenerate embeddings"""
+    global assistant
+    
+    try:
+        if not request.srf.strip():
+            raise HTTPException(status_code=400, detail="SRF text is required")
+        
+        if not request.sql.strip():
+            raise HTTPException(status_code=400, detail="SQL query is required")
+        
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "srf_sql_pairs.jsonl")
+        
+        # Create the new entry
+        new_entry = {
+            "srf": request.srf.strip(),
+            "sql": request.sql.strip()
+        }
+        
+        # Append to the JSONL file
+        with open(jsonl_file_path, 'a', encoding='utf-8') as f:
+            import json
+            f.write(json.dumps(new_entry, ensure_ascii=False) + '\n')
+        
+        # Automatically run the setup command to regenerate embeddings
+        print("🔄 Running setup command to regenerate embeddings with new training data...")
+        
+        try:
+            import subprocess
+            import sys
+            
+            # Run the setup command using subprocess
+            run_py_path = os.path.join(base_dir, "run.py")
+            result = subprocess.run(
+                [sys.executable, run_py_path, "setup"],
+                cwd=base_dir,
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+            
+            if result.returncode == 0:
+                print("✅ Setup command completed successfully")
+                
+                # Reinitialize the assistant with the updated data
+                if not assistant:
+                    from main import CommissionAIAssistant
+                    assistant = CommissionAIAssistant()
+                
+                # Initialize without providing jsonl_path since setup already processed it
+                success = assistant.initialize_system()
+                
+                if success:
+                    return AddSRFSQLResponse(
+                        success=True,
+                        message="SRF-SQL pair added successfully and embeddings regenerated automatically using setup command"
+                    )
+                else:
+                    return AddSRFSQLResponse(
+                        success=True,
+                        message="SRF-SQL pair added and setup completed, but assistant initialization failed. Please restart the web app."
+                    )
+            else:
+                print(f"❌ Setup command failed with return code {result.returncode}")
+                print(f"stdout: {result.stdout}")
+                print(f"stderr: {result.stderr}")
+                
+                return AddSRFSQLResponse(
+                    success=True,
+                    message="SRF-SQL pair added successfully, but automatic embedding regeneration failed. Please run 'python run.py setup' manually."
+                )
+                
+        except subprocess.TimeoutExpired:
+            return AddSRFSQLResponse(
+                success=True,
+                message="SRF-SQL pair added successfully, but embedding regeneration is taking too long. Please run 'python run.py setup' manually."
+            )
+        except Exception as setup_error:
+            print(f"❌ Error running setup command: {str(setup_error)}")
+            return AddSRFSQLResponse(
+                success=True,
+                message=f"SRF-SQL pair added successfully, but automatic setup failed: {str(setup_error)}. Please run 'python run.py setup' manually."
+            )
+        
+    except Exception as e:
+        return AddSRFSQLResponse(
+            success=False,
+            error=str(e)
+        )
+
+@app.get("/api/training-stats")
+async def get_training_stats():
+    """Get training data statistics"""
+    try:
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "srf_sql_pairs.jsonl")
+        
+        if not os.path.exists(jsonl_file_path):
+            return {
+                "total_pairs": 0,
+                "file_size": 0,
+                "last_modified": None
+            }
+        
+        # Count lines in JSONL file
+        with open(jsonl_file_path, 'r', encoding='utf-8') as f:
+            line_count = sum(1 for line in f if line.strip())
+        
+        # Get file stats
+        file_stats = os.stat(jsonl_file_path)
+        file_size = file_stats.st_size
+        last_modified = file_stats.st_mtime
+        
+        return {
+            "total_pairs": line_count,
+            "file_size": file_size,
+            "last_modified": last_modified
+        }
+        
+    except Exception as e:
+        return {
+            "total_pairs": 0,
+            "file_size": 0,
+            "last_modified": None,
+            "error": str(e)
+        }
 
 def update_env_file(key: str, value: str):
     """Update a key-value pair in the .env file"""

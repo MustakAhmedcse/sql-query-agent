@@ -450,6 +450,23 @@
             position: relative;
         }
         
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        
+        .nav-link:hover {
+            background: rgba(255,255,255,0.3);
+            text-decoration: none;
+            color: white;
+        }
+        
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
@@ -471,6 +488,14 @@
         <div class="header">
             <h1>🤖 Commission AI Assistant</h1>
             <p>AI-powered SQL generation for MyBL Commission reports</p>
+            <div style="margin-top: 20px;">
+                <a href="/add-training-data" class="nav-link">
+                    📚 Add Training Data
+                </a>
+                <a href="/" class="nav-link">
+                    🏠 Home
+                </a>
+            </div>
         </div>
         
         <div class="main-content">
