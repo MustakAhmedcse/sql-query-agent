@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Debug run.py (web)",
+      "name": "Web",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/run.py",
@@ -13,7 +13,7 @@
       "args": ["web"]
     },
     {
-      "name": "Python: Debug run.py (cli)",
+      "name": "Cli",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/run.py",
@@ -22,7 +22,7 @@
       "args": ["cli"]
     },
     {
-      "name": "Python: Debug run.py (setup)",
+      "name": "Data setup",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/run.py",

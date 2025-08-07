@@ -177,15 +177,38 @@ class CommissionAIAssistant:
                 'success': False,
                 'error': str(e)
             }
-    def cleaned_srf_text(self, srf_text):
+    def extract_srf_metadata(self, srf_text):
         """
-        SRF text থেকে unnecessary characters remove করি
+        Extract metadata from SRF text to determine what sections are present
         """
+        metadata = {
+            'has_detail_formats': False,
+            'has_commission_name': False,
+            'has_start_date': False,
+            'has_end_date': False,
+        }
+        
+        # Convert to lowercase for case-insensitive matching
+        srf_lower = srf_text.lower()
+        
+        # Check for detail formats
+        detail_indicators = [
+            'details format','details format:','details format :'
+        ]
+        metadata['has_detail_formats'] = any(indicator in srf_lower for indicator in detail_indicators)
+        
+        # Check for other sections
+        metadata['has_commission_name'] = 'commission name' in srf_lower
+        metadata['has_start_date'] = 'start date' in srf_lower
+        metadata['has_end_date'] = 'end date' in srf_lower
+        
+        return metadata
 
-        prompt = f""""
-        <sample format>
-
-        # Commission Business Logics: DD HIT Campaign_27th to 31st May25
+    def get_dynamic_sample_format(self, metadata):
+        """
+        Generate sample format based on metadata
+        """
+        base_format = """# Commission Business Logics: DD HIT Campaign_27th to 31st May25
 
         *Commission Name:* DD HIT Campaign_27th to 31st May25  
         *Start Date:* 27-May-2025  
@@ -197,7 +220,7 @@ class CommissionAIAssistant:
         - *Target:* Distributor has a target and it will be given by Business Team
         - *Mapping:* Agent list of 31st May'25 will be considered
         - *Commission Calculation Logics:*
-            - Selected Deno (709) will be considered for performance calculation.
+            - Selected Deno (709,699,798,899) will be considered for performance calculation.
             - General mathematical rounding: below 0.5 will be rounded down, ≥0.5 rounded up for achievement calculation.
             - Upon achieving Deno HIT target (Count of 709 denomination), Distributor will be given achievement-based incentives.
             - Maximum Achievement capping is 200%.
@@ -206,23 +229,43 @@ class CommissionAIAssistant:
                 |-------------------|---------------|
                 | 200% and Above    | TARGET*2*50   |
                 | 100% and Above    | HIT*50        |
-                | Below 100%        | 0             |
+                | Below 100%        | 0             |"""
+        
+        # Add detail formats only if present in SRF
+        if metadata['has_detail_formats']:
+            base_format += """
 
         *Detail formats:*
         - *Detail 1:* DD_CODE, TARGET, HIT, ACH_PER, COMMISSION
-        - *Detail 2:* DD_CODE, RETAILER_CODE, RET_MSISDN, CUSTOMER_MSISDN,RECHARGE_AMOUNT
+        - *Detail 2:* DD_CODE, RETAILER_CODE, RET_MSISDN, CUSTOMER_MSISDN,RECHARGE_AMOUNT"""
+        
+        return base_format
 
+    def cleaned_srf_text(self, srf_text):
+        """
+        SRF text থেকে unnecessary characters remove করি
+        """
+        # Extract metadata to determine what sections to include
+        metadata = self.extract_srf_metadata(srf_text)
+        
+        # Get dynamic sample format based on metadata
+        sample_format = self.get_dynamic_sample_format(metadata)
+
+        prompt = f""""
+        <sample format>
+        {sample_format}
         </sample format>
 
         <srf text>
-
-            {srf_text} 
-
+        {srf_text} 
         </srf text>
         """
+        
         system_prompt = """
-        You are an expert in understanding SRF texts. Your job is format <srf text> based on the <sample format> provided. Do not Include any extra information or comments
+        You are an expert in understanding SRF texts. Your job is to format <srf text> based on the <sample format> provided.        
+        Do NOT include any information that are not present in <sample format>
         """
+        
         result = self.sql_generator.call_openAI_API([   
                     {
                         "role": "system",
