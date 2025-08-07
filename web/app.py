@@ -355,12 +355,22 @@ async def upload_supporting_file(file: UploadFile = File(...)):
         
         if result['success']:
             if result.get('type') == 'excel':
-                return FileUploadResponse(
-                    success=True,
-                    file_type='excel',
-                    sheet_names=result.get('sheet_names', []),
-                    requires_sheet_selection=result.get('requires_sheet_selection', False)
-                )
+                # Automatically read the first sheet and return column names
+                excel_result = FileProcessor.extract_data_from_excel(file_content, max_rows=0)
+                if excel_result['success']:
+                    column_names = excel_result.get('info', {}).get('column_names', [])
+                    column_info = f"temp_table shared by B2C with data from first sheet\n{', '.join(column_names)}"
+                    
+                    return FileUploadResponse(
+                        success=True,
+                        text=column_info,
+                        file_type='excel_columns'
+                    )
+                else:
+                    return FileUploadResponse(
+                        success=False,
+                        error=excel_result.get('error', 'Error reading Excel columns')
+                    )
             elif result.get('type') == 'csv':
                 # Process CSV immediately
                 csv_result = FileProcessor.extract_data_from_csv(file_content, max_rows=1)

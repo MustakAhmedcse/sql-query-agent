@@ -184,6 +184,9 @@ class FileProcessor:
                 xl_file = pd.ExcelFile(tmp_file_path)
                 sheet_names = xl_file.sheet_names
                 
+                # Close the Excel file object to release the file handle
+                xl_file.close()
+                
                 return {
                     'success': True,
                     'sheet_names': sheet_names,
@@ -191,8 +194,19 @@ class FileProcessor:
                 }
                 
             finally:
-                if os.path.exists(tmp_file_path):
-                    os.unlink(tmp_file_path)
+                # Clean up temp file
+                try:
+                    if os.path.exists(tmp_file_path):
+                        os.unlink(tmp_file_path)
+                except PermissionError:
+                    # If file is still locked, try again after a short delay
+                    import time
+                    time.sleep(0.1)
+                    try:
+                        if os.path.exists(tmp_file_path):
+                            os.unlink(tmp_file_path)
+                    except Exception as cleanup_error:
+                        logger.warning(f"Could not clean up temp file {tmp_file_path}: {cleanup_error}")
                     
         except Exception as e:
             logger.error(f"Error reading Excel sheet names: {str(e)}")
@@ -239,8 +253,19 @@ class FileProcessor:
                 }
                 
             finally:
-                if os.path.exists(tmp_file_path):
-                    os.unlink(tmp_file_path)
+                # Clean up temp file with retry logic
+                try:
+                    if os.path.exists(tmp_file_path):
+                        os.unlink(tmp_file_path)
+                except PermissionError:
+                    # If file is still locked, try again after a short delay
+                    import time
+                    time.sleep(0.1)
+                    try:
+                        if os.path.exists(tmp_file_path):
+                            os.unlink(tmp_file_path)
+                    except Exception as cleanup_error:
+                        logger.warning(f"Could not clean up temp file {tmp_file_path}: {cleanup_error}")
                     
         except Exception as e:
             logger.error(f"Error extracting data from Excel: {str(e)}")

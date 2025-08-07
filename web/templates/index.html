@@ -487,7 +487,7 @@
     <div class="container">
         <div class="header">
             <h1>🤖 Commission AI Assistant</h1>
-            <p>AI-powered SQL generation for MyBL Commission reports</p>
+            <p>AI-powered SQL generation for Commission reports</p>
             <div style="margin-top: 20px;">
                 <a href="/add-training-data" class="nav-link">
                     📚 Add Training Data
@@ -554,7 +554,7 @@
                     <textarea 
                         id="srfText" 
                         rows="8" 
-                        placeholder="Enter your SRF (Sales Report Format) content here...&#10;&#10;Example:&#10;Commission Calculation Report for MyBL Campaign&#10;Period: 1st to 15th April 2025&#10;Commission Type: Hourly Commission&#10;Rate: 2% of revenue&#10;Target: Active MSISDN with data usage"
+                        placeholder="Enter your SRF (Sales Report Format) content here...&#10;&#10;Example:&#10;Commission Calculation Report Campaign&#10;Period: 1st to 15th April 2025&#10;Commission Type: Hourly Commission&#10;Rate: 2% of revenue&#10;Target: Active MSISDN with data usage"
                         required>
                     </textarea>                    
                 </div>
@@ -1055,6 +1055,26 @@
             document.getElementById('srfText').value = '';
             document.getElementById('supportingInfo').value = '';
             document.getElementById('resultSection').style.display = 'none';
+            
+            // Clear file names and inputs
+            document.getElementById('srfFileName').textContent = '';
+            document.getElementById('srfFileName').className = 'file-name';
+            document.getElementById('supportingFileName').textContent = '';
+            document.getElementById('supportingFileName').className = 'file-name';
+            
+            // Clear file inputs
+            document.getElementById('srfFileInput').value = '';
+            document.getElementById('supportingFileInput').value = '';
+            
+            // Hide sheet selector
+            document.getElementById('sheetSelector').style.display = 'none';
+            
+            // Clear current supporting file
+            currentSupportingFile = null;
+            
+            // Remove any file upload status messages
+            const statusMessages = document.querySelectorAll('.file-upload-status');
+            statusMessages.forEach(msg => msg.remove());
         }
         
         // File Upload Functions

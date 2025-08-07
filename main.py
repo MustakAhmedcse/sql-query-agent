@@ -193,7 +193,10 @@ class CommissionAIAssistant:
         
         # Check for detail formats
         detail_indicators = [
-            'details format','details format:','details format :'
+            'details format','details format:','details format :','details format',
+            'detail format','detail format:','detail format :','detail format',
+            'detail formats','detail formats:','detail formats :','detail formats',
+            'details formats','details formats:','details formats :','details formats'
         ]
         metadata['has_detail_formats'] = any(indicator in srf_lower for indicator in detail_indicators)
         
@@ -215,11 +218,9 @@ class CommissionAIAssistant:
         *End Date:* 31-May-2025  
         *Commission Receiver Channel:* Distributor
 
-        *Commission Business Logics:*
-        - *KPI:* EV Recharge (All Valid C2S Recharges)
-        - *Target:* Distributor has a target and it will be given by Business Team
-        - *Mapping:* Agent list of 31st May'25 will be considered
-        - *Commission Calculation Logics:*
+        *Commission Calculation Logics:*
+            - Agent list of 31st May'25 will be considered
+            - Distributor has a target and it will be given by Business Team
             - Selected Deno (709,699,798,899) will be considered for performance calculation.
             - General mathematical rounding: below 0.5 will be rounded down, ≥0.5 rounded up for achievement calculation.
             - Upon achieving Deno HIT target (Count of 709 denomination), Distributor will be given achievement-based incentives.
