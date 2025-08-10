@@ -217,8 +217,7 @@ class CommissionAIAssistant:
         *Start Date:* 27-May-2025  
         *End Date:* 31-May-2025  
         *Commission Receiver Channel:* Distributor
-
-        *Commission Bussiness Logics:*
+         *All calculation Conditions:*
             - Agent list of 31st May'25 will be considered
             - Distributor has a target and it will be given by Business Team
             - Selected Deno (709,699,798,899) will be considered for performance calculation.
