@@ -10,8 +10,15 @@ import os
 import sys
 import uvicorn
 import time
+import json
+import subprocess
+import logging
 from dotenv import load_dotenv
 from typing import Optional
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -124,6 +131,11 @@ async def home(request: Request):
 async def add_training_data_page(request: Request):
     """Add training data page"""
     return templates.TemplateResponse("add_training_data.html", {"request": request})
+
+@app.get("/training-data", response_class=HTMLResponse)
+async def manage_training_data_page(request: Request):
+    """Manage training data page"""
+    return templates.TemplateResponse("manage_training_data.html", {"request": request})
 
 @app.post("/api/generate-sql", response_model=SQLResponse)
 async def generate_sql(request: SRFRequest):
@@ -559,6 +571,193 @@ async def get_training_stats():
             "last_modified": None,
             "error": str(e)
         }
+
+@app.get("/api/training-data")
+async def get_training_data(page: int = 1, limit: int = 10, search: str = ""):
+    """Get paginated list of training data with optional search"""
+    try:
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "data", "srf_sql_pairs.jsonl")
+        
+        if not os.path.exists(jsonl_file_path):
+            return {
+                "data": [],
+                "total": 0,
+                "page": page,
+                "total_pages": 0,
+                "has_next": False,
+                "has_prev": False
+            }
+        
+        # Read all entries and filter by search
+        entries = []
+        with open(jsonl_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                try:
+                    entry = json.loads(line.strip())
+                    
+                    # Apply search filter
+                    if search:
+                        search_lower = search.lower()
+                        srf_content = entry.get('srf', '').lower()
+                        sql_content = entry.get('sql', '').lower()
+                        
+                        # Skip if search term not found in either srf or sql
+                        if search_lower not in srf_content and search_lower not in sql_content:
+                            continue
+                    
+                    # Add ID and preview for list view
+                    entry['id'] = line_num
+                    entry['srf_preview'] = entry.get('srf', '')[:200] + '...' if len(entry.get('srf', '')) > 200 else entry.get('srf', '')
+                    entry['sql_preview'] = entry.get('sql', '')[:200] + '...' if len(entry.get('sql', '')) > 200 else entry.get('sql', '')
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    continue
+        
+        # Calculate pagination
+        total = len(entries)
+        total_pages = (total + limit - 1) // limit
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        
+        # Get paginated data
+        paginated_data = entries[start_idx:end_idx]
+        
+        return {
+            "data": paginated_data,
+            "total": total,
+            "page": page,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting training data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get training data: {str(e)}")
+
+@app.get("/api/training-data/{item_id}")
+async def get_training_data_detail(item_id: int):
+    """Get detailed view of a specific training data item"""
+    try:
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "data", "srf_sql_pairs.jsonl")
+        
+        if not os.path.exists(jsonl_file_path):
+            raise HTTPException(status_code=404, detail="Training data file not found")
+        
+        # Read and find the specific entry
+        with open(jsonl_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                if line_num == item_id:
+                    try:
+                        entry = json.loads(line.strip())
+                        entry['id'] = line_num
+                        return entry
+                    except json.JSONDecodeError:
+                        raise HTTPException(status_code=400, detail="Invalid JSON in training data")
+        
+        raise HTTPException(status_code=404, detail="Training data item not found")
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting training data detail: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get training data detail: {str(e)}")
+
+@app.delete("/api/training-data/{item_id}")
+async def delete_training_data(item_id: int):
+    """Delete a specific training data item"""
+    try:
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "data", "srf_sql_pairs.jsonl")
+        
+        if not os.path.exists(jsonl_file_path):
+            raise HTTPException(status_code=404, detail="Training data file not found")
+        
+        # Read all entries
+        entries = []
+        deleted_entry = None
+        
+        with open(jsonl_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                try:
+                    entry = json.loads(line.strip())
+                    if line_num == item_id:
+                        deleted_entry = entry
+                    else:
+                        entries.append(entry)
+                except json.JSONDecodeError:
+                    # Keep invalid lines as they were (just skip them)
+                    if line_num != item_id:
+                        entries.append({"invalid_line": line.strip()})
+        
+        if deleted_entry is None:
+            raise HTTPException(status_code=404, detail="Training data item not found")
+        
+        # Write back the remaining entries
+        with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+            for entry in entries:
+                if "invalid_line" in entry:
+                    f.write(entry["invalid_line"] + '\n')
+                else:
+                    f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+        
+        # Run setup command to regenerate embeddings
+        try:
+            current_dir = os.path.dirname(os.path.dirname(__file__))
+            result = subprocess.run([
+                sys.executable, 'run.py', 'setup'
+            ], 
+            cwd=current_dir,
+            capture_output=True, 
+            text=True, 
+            timeout=300  # 5 minutes timeout
+            )
+            
+            if result.returncode == 0:
+                logger.info("Setup command completed successfully after deletion")
+                
+                # Reinitialize the assistant with updated embeddings
+                try:
+                    global assistant
+                    from main import CommissionAIAssistant
+                    assistant = CommissionAIAssistant()
+                    setup_success = True
+                    setup_message = "Training data deleted and system regenerated successfully!"
+                except Exception as init_error:
+                    logger.error(f"Failed to reinitialize assistant: {init_error}")
+                    setup_success = False
+                    setup_message = f"Training data deleted but failed to reinitialize system: {str(init_error)}"
+            else:
+                logger.error(f"Setup command failed: {result.stderr}")
+                setup_success = False
+                setup_message = f"Training data deleted but setup failed: {result.stderr}"
+                
+        except subprocess.TimeoutExpired:
+            logger.error("Setup command timed out")
+            setup_success = False
+            setup_message = "Training data deleted but setup process timed out. Please run 'python run.py setup' manually."
+        except Exception as setup_error:
+            logger.error(f"Setup command error: {setup_error}")
+            setup_success = False
+            setup_message = f"Training data deleted but setup failed: {str(setup_error)}"
+        
+        return {
+            "success": True,
+            "message": setup_message,
+            "setup_success": setup_success,
+            "deleted_item": deleted_entry
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting training data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete training data: {str(e)}")
 
 def update_env_file(key: str, value: str):
     """Update a key-value pair in the .env file"""
