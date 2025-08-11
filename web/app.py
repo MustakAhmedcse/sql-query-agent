@@ -441,7 +441,9 @@ async def add_srf_sql_pair(request: AddSRFSQLRequest):
         
         # Path to the JSONL file
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        jsonl_file_path = os.path.join(base_dir, "srf_sql_pairs.jsonl")
+        data_dir = os.path.join(base_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)  # Create data directory if it doesn't exist
+        jsonl_file_path = os.path.join(data_dir, "srf_sql_pairs.jsonl")
         
         # Create the new entry
         new_entry = {
@@ -526,7 +528,7 @@ async def get_training_stats():
     try:
         # Path to the JSONL file
         base_dir = os.path.dirname(os.path.dirname(__file__))
-        jsonl_file_path = os.path.join(base_dir, "srf_sql_pairs.jsonl")
+        jsonl_file_path = os.path.join(base_dir, "data", "srf_sql_pairs.jsonl")
         
         if not os.path.exists(jsonl_file_path):
             return {

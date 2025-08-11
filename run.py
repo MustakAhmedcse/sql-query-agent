@@ -34,10 +34,10 @@ def setup_data():
         print("🔧 Setting up training data...")
         
         # Check if source data exists
-        source_file = os.path.join(os.path.dirname(__file__), "srf_sql_pairs.jsonl")
+        source_file = os.path.join(os.path.dirname(__file__), "data", "srf_sql_pairs.jsonl")
         if not os.path.exists(source_file):
             print(f"❌ Source data file not found: {source_file}")
-            print("Please ensure your training data file exists at the correct location.")
+            print("Please ensure your training data file exists at: ./data/srf_sql_pairs.jsonl")
             return
         
         # Import and run data processor
@@ -101,7 +101,7 @@ SYSTEM REQUIREMENTS:
   - Python 3.7+
   - Ollama server running at http://192.168.105.58:11434
   - Qwen3 model available in Ollama
-  - Training data file: srf_sql_pairs.jsonl
+  - Training data file: data/srf_sql_pairs.jsonl
 
 For more information, check README.md
 """

@@ -1,4 +1,4 @@
-srf_sql_pairs.jsonl
+data/srf_sql_pairs.jsonl
 /chroma_db
 /data
 /commission_env

@@ -259,7 +259,7 @@ def process_your_data(jsonl_file_path):
 # Direct run করার জন্য
 if __name__ == "__main__":
     # আপনার existing data file path
-    your_jsonl_file = os.path.join(os.path.dirname(__file__), "srf_sql_pairs.jsonl")
+    your_jsonl_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "srf_sql_pairs.jsonl")
     
     # Process করি
     result = process_your_data(your_jsonl_file)
