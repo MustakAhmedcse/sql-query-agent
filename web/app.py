@@ -32,7 +32,7 @@ from file_processor import FileProcessor
 # FastAPI app
 app = FastAPI(
     title="Commission AI Assistant",
-    description="AI-powered SQL generation for MyBL Commission reports",
+    description="AI-powered SQL generation for BL Commission reports",
     version="1.0.0"
 )
 

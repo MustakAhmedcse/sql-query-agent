@@ -1,6 +1,6 @@
 # 🤖 Commission AI Assistant
 
-An intelligent AI-powered system that generates SQL queries for MyBL Commission reports from SRF (Service Request Format) inputs using RAG (Retrieval-Augmented Generation) technology.
+An intelligent AI-powered system that generates SQL queries for BL Commission reports from SRF (Service Request Format) inputs using RAG (Retrieval-Augmented Generation) technology.
 
 ## 🎯 Project Overview
 
@@ -44,6 +44,7 @@ Commission Agent/
 ## 🚀 Quick Start
 
 ### 1. Environment Setup
+
 ```bash
 # Create virtual environment
 python -m venv commission_env
@@ -56,7 +57,9 @@ pip install -r requirements.txt
 ```
 
 ### 2. Configuration
+
 Create a `.env` file in the project root:
+
 ```bash
 # AI Provider Configuration
 AI_PROVIDER=openai                    # Options: openai, ollama
@@ -81,6 +84,7 @@ MAX_RETRIEVAL_RESULTS=5
 ```
 
 ### 3. Initialize the System
+
 ```bash
 # Run the main application to initialize
 python main.py
@@ -89,6 +93,7 @@ python main.py
 ```
 
 ### 4. Start Web Application
+
 ```bash
 # Start the web interface
 python run.py
@@ -112,6 +117,7 @@ Open your browser and go to `http://localhost:8000`
 ## 📝 Usage
 
 ### Web Interface:
+
 1. **Select AI Provider**: Choose OpenAI or Ollama from the dropdown
 2. **Select Model**: Pick specific model for your provider
 3. **Input SRF**: Either type directly or upload SRF documents (.doc/.docx)
@@ -120,12 +126,14 @@ Open your browser and go to `http://localhost:8000`
 6. **Review Results**: Check the generated SQL and validation results
 
 ### File Upload Support:
+
 - **SRF Documents**: Upload .doc or .docx files for automatic text extraction
 - **Supporting Data**: Upload .xlsx, .xls, or .csv files for additional context
 
 ## 🧪 Testing
 
 Run the test scripts in the `tests/` folder:
+
 ```bash
 # Test AI provider configuration
 python tests/test_ai_provider.py
@@ -137,11 +145,13 @@ python tests/test_no_template_fallback.py
 ## ⚙️ AI Provider Setup
 
 ### For OpenAI:
+
 1. Get API key from OpenAI
 2. Set `AI_PROVIDER=openai` in .env
 3. Add your `OPENAI_API_KEY` to .env
 
 ### For Ollama:
+
 1. Install and run Ollama server
 2. Set `AI_PROVIDER=ollama` in .env
 3. Configure `OLLAMA_API_BASE_URL` in .env
@@ -149,6 +159,7 @@ python tests/test_no_template_fallback.py
 ## 🚨 Error Handling
 
 The system provides clear error messages for:
+
 - Missing or invalid API keys
 - Unreachable AI servers
 - Network connectivity issues
@@ -170,6 +181,7 @@ No template fallbacks - you get honest feedback about AI capabilities.
 ## 🎯 Perfect for POCs
 
 This system is designed for commission POC projects where:
+
 - Multiple commission types need to be handled
 - AI transparency is important
 - Clear error feedback is required

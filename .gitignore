@@ -5,4 +5,4 @@ data/srf_sql_pairs.jsonl
 /__pycache__
 __pycache__/
 /.env
-config/.env
+production/config/.env.production
