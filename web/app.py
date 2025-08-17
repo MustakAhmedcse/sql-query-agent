@@ -60,6 +60,7 @@ class SQLResponse(BaseModel):
     generation_time: float = 0.0
     ai_provider: str = ""
     model_used: str = ""
+    srf_history: list = []  # SRF examples used for generation
 
 class FileUploadResponse(BaseModel):
     success: bool
@@ -173,6 +174,28 @@ async def generate_sql(request: SRFRequest):
             result['model_used'] = os.getenv("OLLAMA_MODEL", "qwen3")
         else:
             result['model_used'] = "unknown"
+        
+        # Extract SRF history from context
+        srf_history = []
+        context = result.get('context', {})
+        
+        # Get similar examples from the context
+        similar_examples = context.get('similar_examples', [])
+        if not similar_examples:
+            # Fallback to all_similar if no high confidence examples
+            similar_examples = context.get('all_similar', [])[:5]  # Limit to top 5
+        
+        for example in similar_examples:
+            history_item = {
+                'srf_text': example.get('srf_text', ''),
+                'sql_query': example.get('sql_query', ''),
+                'similarity_score': round(example.get('similarity_score', 0), 3),
+                'metadata': example.get('metadata', {})
+            }
+            srf_history.append(history_item)
+        
+        # Add SRF history to the result
+        result['srf_history'] = srf_history
         
         return SQLResponse(**result)
         

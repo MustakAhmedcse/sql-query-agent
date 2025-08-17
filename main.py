@@ -168,7 +168,8 @@ class CommissionAIAssistant:
                 'validation': validation,
                 'context_quality': quality_analysis,
                 'similar_examples_count': context.get('total_similar_found', 0),
-                'high_confidence_count': context.get('high_confidence_count', 0)
+                'high_confidence_count': context.get('high_confidence_count', 0),
+                'context': context  # Add the full context for SRF history
             }
             
         except Exception as e:

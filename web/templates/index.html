@@ -481,6 +481,139 @@
                 gap: 10px;
             }
         }
+        
+        /* SRF History Styles */
+        .srf-history-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-bottom: 2px solid #f1f5f9;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .history-header:hover {
+            background-color: #f8fafc;
+        }
+        
+        .history-header h4 {
+            margin: 0;
+            color: #1e293b;
+            font-size: 1.2em;
+            pointer-events: none;
+        }
+        
+        .collapse-toggle {
+            display: flex;
+            align-items: center;
+        }
+        
+        .collapse-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #4f46e5;
+            font-weight: 600;
+            font-size: 0.9em;
+            pointer-events: none;
+        }
+        
+        .arrow {
+            transition: transform 0.3s ease;
+            font-size: 0.8em;
+        }
+        
+        .arrow.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .arrow.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .history-content {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 0;
+        }
+        
+        .history-item {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4f46e5;
+            position: relative;
+        }
+        
+        .history-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .similarity-score {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #4f46e5;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .srf-section, .sql-section {
+            margin-bottom: 15px;
+        }
+        
+        .srf-section h5, .sql-section h5 {
+            margin: 0 0 8px 0;
+            color: #1e293b;
+            font-size: 1em;
+            font-weight: 600;
+        }
+        
+        .srf-text, .sql-text {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.5;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .sql-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        
+        .empty-history {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .empty-history i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -645,6 +778,19 @@
                 <div class="sql-container">
                     <button class="copy-btn" onclick="copySQLToClipboard()">📋 Copy</button>
                     <div class="sql-output" id="sqlOutput"></div>
+                </div>
+                
+                <!-- SRF History Section -->
+                <div class="srf-history-container" id="srfHistoryContainer" style="display: none;">
+                    <div class="history-header" onclick="toggleSrfHistoryCollapse()">
+                        <h4>📚 Similar SRF Examples Used for Generation</h4>
+                        <div class="collapse-toggle">
+                            <span class="collapse-btn" id="collapseBtn">
+                                <span class="arrow">▶</span> Show Examples
+                            </span>
+                        </div>
+                    </div>
+                    <div class="history-content" id="srfHistoryContent" style="display: none;"></div>
                 </div>
                 
                 <div class="validation-panel" id="validationPanel">
@@ -988,6 +1134,9 @@
                 validationContent.innerHTML += suggestionsHTML;
             }
             
+            // Display SRF History
+            displaySrfHistory(result.srf_history || []);
+            
             // Show result section
             document.getElementById('resultSection').style.display = 'block';
         }
@@ -1078,6 +1227,86 @@
             // Remove any file upload status messages
             const statusMessages = document.querySelectorAll('.file-upload-status');
             statusMessages.forEach(msg => msg.remove());
+        }
+        
+        // Display SRF History
+        function displaySrfHistory(srfHistory) {
+            const historyContainer = document.getElementById('srfHistoryContainer');
+            const historyContent = document.getElementById('srfHistoryContent');
+            
+            // Store globally for toggle function
+            window.lastSrfHistory = srfHistory;
+            
+            if (!srfHistory || srfHistory.length === 0) {
+                historyContainer.style.display = 'none';
+                return;
+            }
+            
+            // Show the container (but content is collapsed by default)
+            historyContainer.style.display = 'block';
+            
+            // Reset to collapsed state
+            historyContent.style.display = 'none';
+            const collapseBtn = document.getElementById('collapseBtn');
+            const arrow = collapseBtn.querySelector('.arrow');
+            collapseBtn.innerHTML = '<span class="arrow">▶</span> Show Examples';
+            arrow.classList.remove('expanded');
+            
+            // Prepare content but don't show it yet
+            historyContent.innerHTML = '';
+            
+            if (srfHistory.length === 0) {
+                historyContent.innerHTML = '<div class="empty-history"><i>📭</i><p>No similar SRF examples were used for this generation.</p></div>';
+                return;
+            }
+            
+            // Create history items
+            srfHistory.forEach((item, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                
+                const similarityScore = (item.similarity_score * 100).toFixed(1);
+                
+                historyItem.innerHTML = `
+                    <div class="similarity-score">${similarityScore}% Similar</div>
+                    
+                    <div class="srf-section">
+                        <h5>📝 Similar SRF Content:</h5>
+                        <div class="srf-text">${escapeHtml(item.srf_text || 'No SRF content available')}</div>
+                    </div>
+                    
+                    <div class="sql-section">
+                        <h5>🔧 Corresponding SQL Query:</h5>
+                        <div class="sql-text">${escapeHtml(item.sql_query || 'No SQL query available')}</div>
+                    </div>
+                `;
+                
+                historyContent.appendChild(historyItem);
+            });
+        }
+        
+        // Toggle SRF History Collapse/Expand
+        function toggleSrfHistoryCollapse() {
+            const historyContent = document.getElementById('srfHistoryContent');
+            const collapseBtn = document.getElementById('collapseBtn');
+            const arrow = collapseBtn.querySelector('.arrow');
+            
+            if (historyContent.style.display === 'none') {
+                // Expand
+                historyContent.style.display = 'block';
+                collapseBtn.innerHTML = '<span class="arrow expanded">▼</span> Hide Examples';
+            } else {
+                // Collapse
+                historyContent.style.display = 'none';
+                collapseBtn.innerHTML = '<span class="arrow">▶</span> Show Examples';
+            }
+        }
+        
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
         
         // File Upload Functions

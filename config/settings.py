@@ -48,7 +48,7 @@ class Settings:
     # RAG CONFIGURATION
     # =============================================================================
     MAX_RETRIEVAL_RESULTS = int(os.getenv("MAX_RETRIEVAL_RESULTS", "3"))
-    CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.7"))
+    CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.9"))
     
     # Enhanced RAG settings
     RAG_BATCH_SIZE = int(os.getenv("RAG_BATCH_SIZE", "100"))
