@@ -229,6 +229,18 @@
             pointer-events: none;
         }
         
+        .reinitialize-status {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #059669;
+            text-align: center;
+        }
+
+        .reinitialize-status.error {
+            color: #dc2626;
+        }
+        
         /* File Upload Styles */
         .file-upload-container {
             margin-bottom: 15px;
@@ -480,6 +492,15 @@
                 flex-direction: column;
                 gap: 10px;
             }
+            
+            .config-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .config-item {
+                min-width: auto;
+            }
         }
         
         /* SRF History Styles */
@@ -669,7 +690,14 @@
                             <option value="">Loading...</option>
                         </select>
                     </div>
+                    <div class="config-item">
+                        <label>&nbsp;</label>
+                        <button id="reinitializeButton" class="btn btn-secondary" onclick="reinitializeSystem()">
+                            🔄 Update RAG Data
+                        </button>
+                    </div>
                 </div>
+                <div id="reinitializeStatus" class="reinitialize-status"></div>
             </div>
               <!-- Input Section -->
             <div class="input-section">
@@ -805,7 +833,59 @@
         window.onload = function() {
             checkSystemStatus();
             loadAIConfig();
-        };        // Load AI configuration
+        };
+
+        // Reinitialize system function
+        async function reinitializeSystem() {
+            const button = document.getElementById('reinitializeButton');
+            const status = document.getElementById('reinitializeStatus');
+            
+            if (!confirm('🔄 Are you sure you want to update RAG data?\n\nThis will reload the AI assistant with the current training data and may take a few moments.')) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '⏳ Updating...';
+            status.textContent = 'Processing...';
+            status.className = 'reinitialize-status';
+            
+            try {
+                const response = await fetch('/api/reinitialize', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    status.textContent = 'RAG data updated successfully!';
+                    status.className = 'reinitialize-status';
+                    
+                    // Refresh system status after successful reinitialize
+                    setTimeout(() => {
+                        checkSystemStatus();
+                        status.textContent = '';
+                    }, 3000);
+                } else {
+                    throw new Error(result.detail || 'Failed to update RAG data');
+                }
+            } catch (error) {
+                console.error('Error updating RAG data:', error);
+                status.textContent = `Failed to update RAG data: ${error.message}`;
+                status.className = 'reinitialize-status error';
+                
+                // Clear error status after 5 seconds
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'reinitialize-status';
+                }, 5000);
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        }        // Load AI configuration
         async function loadAIConfig() {
             return await loadAIConfigWithProvider(null);
         }

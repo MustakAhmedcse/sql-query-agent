@@ -236,6 +236,27 @@ async def initialize_system(jsonl_path: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/reinitialize")
+async def reinitialize_system():
+    """Reinitialize the system with updated training data"""
+    global assistant
+    
+    try:
+        if not assistant:
+            from main import CommissionAIAssistant
+            assistant = CommissionAIAssistant()
+        
+        success = assistant.initialize_system()
+        
+        if success:
+            return {"success": True, "message": "System reinitialized successfully with updated training data"}
+        else:
+            return {"success": False, "message": "System reinitialization failed"}
+            
+    except Exception as e:
+        logger.error(f"Error reinitializing system: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reinitialize system: {str(e)}")
+
 # Health check
 @app.get("/health")
 async def health_check():
@@ -483,7 +504,8 @@ async def add_srf_sql_pair(request: AddSRFSQLRequest):
         # Create the new entry
         new_entry = {
             "srf": request.srf.strip(),
-            "sql": request.sql.strip()
+            "sql": request.sql.strip(),
+            "enabled": True
         }
         
         # Append to the JSONL file
@@ -511,24 +533,10 @@ async def add_srf_sql_pair(request: AddSRFSQLRequest):
             if result.returncode == 0:
                 print("✅ Setup command completed successfully")
                 
-                # Reinitialize the assistant with the updated data
-                if not assistant:
-                    from main import CommissionAIAssistant
-                    assistant = CommissionAIAssistant()
-                
-                # Initialize without providing jsonl_path since setup already processed it
-                success = assistant.initialize_system()
-                
-                if success:
-                    return AddSRFSQLResponse(
-                        success=True,
-                        message="SRF-SQL pair added successfully and embeddings regenerated automatically using setup command"
-                    )
-                else:
-                    return AddSRFSQLResponse(
-                        success=True,
-                        message="SRF-SQL pair added and setup completed, but assistant initialization failed. Please restart the web app."
-                    )
+                return AddSRFSQLResponse(
+                    success=True,
+                    message="SRF-SQL pair added and embeddings regenerated. Please reinitialize the system to apply changes."
+                )
             else:
                 print(f"❌ Setup command failed with return code {result.returncode}")
                 print(f"stdout: {result.stdout}")
@@ -632,6 +640,7 @@ async def get_training_data(page: int = 1, limit: int = 10, search: str = ""):
                     
                     # Add ID and preview for list view
                     entry['id'] = line_num
+                    entry['enabled'] = entry.get('enabled', True)  # Default to enabled if not specified
                     entry['srf_preview'] = entry.get('srf', '')[:200] + '...' if len(entry.get('srf', '')) > 200 else entry.get('srf', '')
                     entry['sql_preview'] = entry.get('sql', '')[:200] + '...' if len(entry.get('sql', '')) > 200 else entry.get('sql', '')
                     entries.append(entry)
@@ -743,18 +752,8 @@ async def delete_training_data(item_id: int):
             
             if result.returncode == 0:
                 logger.info("Setup command completed successfully after deletion")
-                
-                # Reinitialize the assistant with updated embeddings
-                try:
-                    global assistant
-                    from main import CommissionAIAssistant
-                    assistant = CommissionAIAssistant()
-                    setup_success = True
-                    setup_message = "Training data deleted and system regenerated successfully!"
-                except Exception as init_error:
-                    logger.error(f"Failed to reinitialize assistant: {init_error}")
-                    setup_success = False
-                    setup_message = f"Training data deleted but failed to reinitialize system: {str(init_error)}"
+                setup_success = True
+                setup_message = "Training data deleted and embeddings regenerated. Please reinitialize the system to apply changes."
             else:
                 logger.error(f"Setup command failed: {result.stderr}")
                 setup_success = False
@@ -781,6 +780,90 @@ async def delete_training_data(item_id: int):
     except Exception as e:
         logger.error(f"Error deleting training data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete training data: {str(e)}")
+
+@app.patch("/api/training-data/{item_id}/toggle")
+async def toggle_training_data(item_id: int):
+    """Toggle enable/disable status of a training data item"""
+    try:
+        # Path to the JSONL file
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        jsonl_file_path = os.path.join(base_dir, "data", "srf_sql_pairs.jsonl")
+        
+        if not os.path.exists(jsonl_file_path):
+            raise HTTPException(status_code=404, detail="Training data file not found")
+        
+        # Read all entries
+        entries = []
+        target_entry = None
+        
+        with open(jsonl_file_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                try:
+                    entry = json.loads(line.strip())
+                    if line_num == item_id:
+                        # Toggle the enabled status
+                        current_status = entry.get('enabled', True)
+                        entry['enabled'] = not current_status
+                        target_entry = entry
+                    entries.append(entry)
+                except json.JSONDecodeError:
+                    # Keep invalid lines as they were
+                    entries.append({"invalid_line": line.strip()})
+        
+        if target_entry is None:
+            raise HTTPException(status_code=404, detail="Training data item not found")
+        
+        # Write back all entries
+        with open(jsonl_file_path, 'w', encoding='utf-8') as f:
+            for entry in entries:
+                if "invalid_line" in entry:
+                    f.write(entry["invalid_line"] + '\n')
+                else:
+                    f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+        
+        # Run setup command to regenerate embeddings (only for enabled entries)
+        try:
+            current_dir = os.path.dirname(os.path.dirname(__file__))
+            result = subprocess.run([
+                sys.executable, 'run.py', 'setup'
+            ], 
+            cwd=current_dir,
+            capture_output=True, 
+            text=True, 
+            timeout=300  # 5 minutes timeout
+            )
+            
+            if result.returncode == 0:
+                logger.info("Setup command completed successfully after toggle")
+                setup_success = True
+                setup_message = f"Training data {'enabled' if target_entry['enabled'] else 'disabled'} and embeddings regenerated. Please reinitialize the system to apply changes."
+            else:
+                logger.error(f"Setup command failed: {result.stderr}")
+                setup_success = False
+                setup_message = f"Training data toggled but setup failed: {result.stderr}"
+                
+        except subprocess.TimeoutExpired:
+            logger.error("Setup command timed out")
+            setup_success = False
+            setup_message = "Training data toggled but setup process timed out. Please run 'python run.py setup' manually."
+        except Exception as setup_error:
+            logger.error(f"Setup command error: {setup_error}")
+            setup_success = False
+            setup_message = f"Training data toggled but setup failed: {str(setup_error)}"
+        
+        return {
+            "success": True,
+            "message": setup_message,
+            "setup_success": setup_success,
+            "enabled": target_entry['enabled'],
+            "item_id": item_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error toggling training data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to toggle training data: {str(e)}")
 
 def update_env_file(key: str, value: str):
     """Update a key-value pair in the .env file"""

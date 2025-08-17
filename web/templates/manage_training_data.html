@@ -163,6 +163,46 @@
             transform: translateY(-1px);
         }
 
+        .system-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .reinitialize-button {
+            padding: 12px 20px;
+            background: #059669;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .reinitialize-button:hover {
+            background: #047857;
+            transform: translateY(-1px);
+        }
+
+        .reinitialize-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reinitialize-status {
+            font-size: 14px;
+            font-weight: 500;
+            color: #059669;
+        }
+
+        .reinitialize-status.error {
+            color: #dc2626;
+        }
+
         .pagination-info {
             color: #64748b;
             font-weight: 500;
@@ -242,6 +282,50 @@
         .btn-danger:hover {
             background: #dc2626;
             transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-enabled {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .row-disabled {
+            opacity: 0.6;
+            background-color: #f9f9f9;
         }
 
         .pagination {
@@ -437,6 +521,11 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+            
+            .system-controls {
+                margin-top: 10px;
+                justify-content: center;
+            }
 
             .data-table {
                 font-size: 14px;
@@ -496,6 +585,10 @@
                     <button id="searchButton" class="search-button">🔍 Search</button>
                     <button id="clearButton" class="clear-button">✖ Clear</button>
                 </div>
+                <div class="system-controls">
+                    <button id="reinitializeButton" class="reinitialize-button">🔄 Update RAG Data</button>
+                    <span id="reinitializeStatus" class="reinitialize-status"></span>
+                </div>
             </div>
 
             <!-- Messages -->
@@ -517,9 +610,10 @@
                 <thead>
                     <tr>
                         <th style="width: 80px;">ID</th>
-                        <th style="width: 40%;">SRF Preview</th>
-                        <th style="width: 40%;">SQL Preview</th>
-                        <th style="width: 150px;">Actions</th>
+                        <th style="width: 35%;">SRF Preview</th>
+                        <th style="width: 35%;">SQL Preview</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 200px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="dataTableBody">
@@ -586,6 +680,12 @@
                 currentPage = 1;
                 loadTrainingData(currentPage);
             });
+            
+            // Reinitialize button click
+            const reinitializeButton = document.getElementById('reinitializeButton');
+            reinitializeButton.addEventListener('click', function() {
+                reinitializeSystem();
+            });
         });
 
         function performSearch() {
@@ -635,13 +735,28 @@
             
             data.forEach(item => {
                 const row = document.createElement('tr');
+                const isEnabled = item.enabled !== false; // Default to enabled if not specified
+                
+                // Add disabled class if item is disabled
+                if (!isEnabled) {
+                    row.classList.add('row-disabled');
+                }
+                
                 row.innerHTML = `
                     <td><strong>#${item.id}</strong></td>
                     <td><div class="preview-text" title="${escapeHtml(item.srf || '')}">${escapeHtml(item.srf_preview || 'No SRF content')}</div></td>
                     <td><div class="preview-text" title="${escapeHtml(item.sql || '')}">${escapeHtml(item.sql_preview || 'No SQL content')}</div></td>
                     <td>
+                        <span class="status-badge ${isEnabled ? 'status-enabled' : 'status-disabled'}">
+                            ${isEnabled ? '✅ Enabled' : '❌ Disabled'}
+                        </span>
+                    </td>
+                    <td>
                         <div class="action-buttons">
                             <button class="btn btn-primary" onclick="viewDetail(${item.id})">👁️ View</button>
+                            <button class="btn ${isEnabled ? 'btn-warning' : 'btn-success'}" onclick="toggleTrainingData(${item.id}, ${isEnabled})">
+                                ${isEnabled ? '⏸️ Disable' : '▶️ Enable'}
+                            </button>
                             <button class="btn btn-danger" onclick="deleteItem(${item.id})">🗑️ Delete</button>
                         </div>
                     </td>
@@ -783,6 +898,112 @@
                     deleteButton.style.opacity = '1';
                     deleteButton.style.cursor = 'pointer';
                 }
+            }
+        }
+
+        async function toggleTrainingData(id, currentlyEnabled) {
+            const action = currentlyEnabled ? 'disable' : 'enable';
+            const actionText = currentlyEnabled ? 'disabled' : 'enabled';
+            
+            if (!confirm(`⚠️ Are you sure you want to ${action} this training data item?\n\nThis will regenerate the AI embeddings and ${currentlyEnabled ? 'exclude this item from' : 'include this item in'} future training.`)) {
+                return;
+            }
+            
+            // Find and disable the toggle button
+            const toggleButton = document.querySelector(`button[onclick="toggleTrainingData(${id}, ${currentlyEnabled})"]`);
+            const originalText = toggleButton ? toggleButton.innerHTML : '';
+            
+            try {
+                if (toggleButton) {
+                    toggleButton.disabled = true;
+                    toggleButton.innerHTML = '⏳ Processing...';
+                    toggleButton.style.opacity = '0.6';
+                    toggleButton.style.cursor = 'not-allowed';
+                }
+                
+                showMessage(`🔄 ${action === 'enable' ? 'Enabling' : 'Disabling'} training data and regenerating embeddings...`, 'info');
+                
+                const response = await fetch(`/api/training-data/${id}/toggle`, {
+                    method: 'PATCH'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showMessage(`✅ Training data successfully ${actionText}! ${result.message}`, 'success');
+                    
+                    // Reload data after a short delay
+                    setTimeout(() => {
+                        loadTrainingData(currentPage);
+                    }, 1000);
+                } else {
+                    throw new Error(result.detail || `Failed to ${action} training data`);
+                }
+            } catch (error) {
+                console.error(`Error ${action}ing item:`, error);
+                showMessage(`❌ Error ${action}ing training data: ${error.message}`, 'error');
+                
+                // Restore button state on error
+                if (toggleButton) {
+                    toggleButton.disabled = false;
+                    toggleButton.innerHTML = originalText;
+                    toggleButton.style.opacity = '1';
+                    toggleButton.style.cursor = 'pointer';
+                }
+            }
+        }
+
+        async function reinitializeSystem() {
+            const button = document.getElementById('reinitializeButton');
+            const status = document.getElementById('reinitializeStatus');
+            
+            if (!confirm('🔄 Are you sure you want to update RAG data?\n\nThis will reload the AI assistant with the current training data and may take a few moments.')) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            const originalText = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '⏳ Updating...';
+            status.textContent = 'Processing...';
+            status.className = 'reinitialize-status';
+            
+            try {
+                showMessage('🔄 Updating RAG data with current training data...', 'info');
+                
+                const response = await fetch('/api/reinitialize', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showMessage('✅ RAG data updated successfully!', 'success');
+                    status.textContent = 'Success!';
+                    status.className = 'reinitialize-status';
+                    
+                    // Clear status after 3 seconds
+                    setTimeout(() => {
+                        status.textContent = '';
+                    }, 3000);
+                } else {
+                    throw new Error(result.detail || 'Failed to update RAG data');
+                }
+            } catch (error) {
+                console.error('Error updating RAG data:', error);
+                showMessage(`❌ Error updating RAG data: ${error.message}`, 'error');
+                status.textContent = 'Failed!';
+                status.className = 'reinitialize-status error';
+                
+                // Clear error status after 5 seconds
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'reinitialize-status';
+                }, 5000);
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+                button.innerHTML = originalText;
             }
         }
 

@@ -30,18 +30,26 @@ class DataProcessor:
     def load_existing_data(self, jsonl_file_path):
         """
         আপনার existing srf_sql_pairs.jsonl file load করে
+        Only loads enabled entries for training
         """
         try:
             data = []
+            total_count = 0
+            enabled_count = 0
             logger.info(f"Loading data from: {jsonl_file_path}")
             
             with open(jsonl_file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     if line.strip():  # Empty line skip করি
                         item = json.loads(line)
-                        data.append(item)
+                        total_count += 1
+                        
+                        # Only include enabled entries (default to enabled if not specified)
+                        if item.get('enabled', True):
+                            data.append(item)
+                            enabled_count += 1
             
-            logger.info(f"Loaded {len(data)} SRF-SQL pairs")
+            logger.info(f"Loaded {enabled_count} enabled SRF-SQL pairs out of {total_count} total pairs")
             return data            
         except Exception as e:
             logger.error(f"Error loading data: {str(e)}")
