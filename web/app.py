@@ -238,10 +238,34 @@ async def initialize_system(jsonl_path: str = None):
 
 @app.post("/api/reinitialize")
 async def reinitialize_system():
-    """Reinitialize the system with updated training data"""
+    """Regenerate embeddings and reinitialize the system with updated training data"""
     global assistant
     
     try:
+        # First run setup to regenerate embeddings
+        logger.info("Starting RAG data update process...")
+        
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        run_py_path = os.path.join(base_dir, "run.py")
+        
+        result = subprocess.run(
+            [sys.executable, run_py_path, "setup"],
+            cwd=base_dir,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if result.returncode != 0:
+            logger.error(f"Setup command failed: {result.stderr}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to regenerate embeddings: {result.stderr}"
+            )
+        
+        logger.info("Embeddings regenerated successfully, now reinitializing assistant...")
+        
+        # Then reinitialize the assistant
         if not assistant:
             from main import CommissionAIAssistant
             assistant = CommissionAIAssistant()
@@ -249,13 +273,16 @@ async def reinitialize_system():
         success = assistant.initialize_system()
         
         if success:
-            return {"success": True, "message": "System reinitialized successfully with updated training data"}
+            return {"success": True, "message": "RAG data updated and system reinitialized successfully"}
         else:
-            return {"success": False, "message": "System reinitialization failed"}
+            return {"success": False, "message": "Embeddings regenerated but system reinitialization failed"}
             
+    except subprocess.TimeoutExpired:
+        logger.error("Setup command timed out")
+        raise HTTPException(status_code=500, detail="RAG data update process timed out")
     except Exception as e:
-        logger.error(f"Error reinitializing system: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to reinitialize system: {str(e)}")
+        logger.error(f"Error updating RAG data: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update RAG data: {str(e)}")
 
 # Health check
 @app.get("/health")
@@ -513,51 +540,10 @@ async def add_srf_sql_pair(request: AddSRFSQLRequest):
             import json
             f.write(json.dumps(new_entry, ensure_ascii=False) + '\n')
         
-        # Automatically run the setup command to regenerate embeddings
-        print("🔄 Running setup command to regenerate embeddings with new training data...")
-        
-        try:
-            import subprocess
-            import sys
-            
-            # Run the setup command using subprocess
-            run_py_path = os.path.join(base_dir, "run.py")
-            result = subprocess.run(
-                [sys.executable, run_py_path, "setup"],
-                cwd=base_dir,
-                capture_output=True,
-                text=True,
-                timeout=300  # 5 minute timeout
-            )
-            
-            if result.returncode == 0:
-                print("✅ Setup command completed successfully")
-                
-                return AddSRFSQLResponse(
-                    success=True,
-                    message="SRF-SQL pair added and embeddings regenerated. Please reinitialize the system to apply changes."
-                )
-            else:
-                print(f"❌ Setup command failed with return code {result.returncode}")
-                print(f"stdout: {result.stdout}")
-                print(f"stderr: {result.stderr}")
-                
-                return AddSRFSQLResponse(
-                    success=True,
-                    message="SRF-SQL pair added successfully, but automatic embedding regeneration failed. Please run 'python run.py setup' manually."
-                )
-                
-        except subprocess.TimeoutExpired:
-            return AddSRFSQLResponse(
-                success=True,
-                message="SRF-SQL pair added successfully, but embedding regeneration is taking too long. Please run 'python run.py setup' manually."
-            )
-        except Exception as setup_error:
-            print(f"❌ Error running setup command: {str(setup_error)}")
-            return AddSRFSQLResponse(
-                success=True,
-                message=f"SRF-SQL pair added successfully, but automatic setup failed: {str(setup_error)}. Please run 'python run.py setup' manually."
-            )
+        return AddSRFSQLResponse(
+            success=True,
+            message="SRF-SQL pair added successfully. Click 'Update RAG Data' to apply changes to the AI system."
+        )
         
     except Exception as e:
         return AddSRFSQLResponse(
@@ -738,40 +724,10 @@ async def delete_training_data(item_id: int):
                 else:
                     f.write(json.dumps(entry, ensure_ascii=False) + '\n')
         
-        # Run setup command to regenerate embeddings
-        try:
-            current_dir = os.path.dirname(os.path.dirname(__file__))
-            result = subprocess.run([
-                sys.executable, 'run.py', 'setup'
-            ], 
-            cwd=current_dir,
-            capture_output=True, 
-            text=True, 
-            timeout=300  # 5 minutes timeout
-            )
-            
-            if result.returncode == 0:
-                logger.info("Setup command completed successfully after deletion")
-                setup_success = True
-                setup_message = "Training data deleted and embeddings regenerated. Please reinitialize the system to apply changes."
-            else:
-                logger.error(f"Setup command failed: {result.stderr}")
-                setup_success = False
-                setup_message = f"Training data deleted but setup failed: {result.stderr}"
-                
-        except subprocess.TimeoutExpired:
-            logger.error("Setup command timed out")
-            setup_success = False
-            setup_message = "Training data deleted but setup process timed out. Please run 'python run.py setup' manually."
-        except Exception as setup_error:
-            logger.error(f"Setup command error: {setup_error}")
-            setup_success = False
-            setup_message = f"Training data deleted but setup failed: {str(setup_error)}"
-        
         return {
             "success": True,
-            "message": setup_message,
-            "setup_success": setup_success,
+            "message": "Training data deleted successfully. Click 'Update RAG Data' to apply changes to the AI system.",
+            "setup_success": True,
             "deleted_item": deleted_entry
         }
         
@@ -821,40 +777,10 @@ async def toggle_training_data(item_id: int):
                 else:
                     f.write(json.dumps(entry, ensure_ascii=False) + '\n')
         
-        # Run setup command to regenerate embeddings (only for enabled entries)
-        try:
-            current_dir = os.path.dirname(os.path.dirname(__file__))
-            result = subprocess.run([
-                sys.executable, 'run.py', 'setup'
-            ], 
-            cwd=current_dir,
-            capture_output=True, 
-            text=True, 
-            timeout=300  # 5 minutes timeout
-            )
-            
-            if result.returncode == 0:
-                logger.info("Setup command completed successfully after toggle")
-                setup_success = True
-                setup_message = f"Training data {'enabled' if target_entry['enabled'] else 'disabled'} and embeddings regenerated. Please reinitialize the system to apply changes."
-            else:
-                logger.error(f"Setup command failed: {result.stderr}")
-                setup_success = False
-                setup_message = f"Training data toggled but setup failed: {result.stderr}"
-                
-        except subprocess.TimeoutExpired:
-            logger.error("Setup command timed out")
-            setup_success = False
-            setup_message = "Training data toggled but setup process timed out. Please run 'python run.py setup' manually."
-        except Exception as setup_error:
-            logger.error(f"Setup command error: {setup_error}")
-            setup_success = False
-            setup_message = f"Training data toggled but setup failed: {str(setup_error)}"
-        
         return {
             "success": True,
-            "message": setup_message,
-            "setup_success": setup_success,
+            "message": f"Training data {'enabled' if target_entry['enabled'] else 'disabled'} successfully. Click 'Update RAG Data' to apply changes to the AI system.",
+            "setup_success": True,
             "enabled": target_entry['enabled'],
             "item_id": item_id
         }
