@@ -242,12 +242,21 @@ async def reinitialize_system():
     global assistant
     
     try:
+        # Check current embedding count before update
+        if assistant and assistant.embedding_manager:
+            try:
+                old_count = assistant.embedding_manager.collection.count()
+                logger.info(f"Current embedding count before update: {old_count}")
+            except:
+                logger.info("Could not get current embedding count")
+        
         # First run setup to regenerate embeddings
         logger.info("Starting RAG data update process...")
         
         base_dir = os.path.dirname(os.path.dirname(__file__))
         run_py_path = os.path.join(base_dir, "run.py")
         
+        # Run setup with force flag to ensure regeneration
         result = subprocess.run(
             [sys.executable, run_py_path, "setup"],
             cwd=base_dir,
@@ -258,19 +267,30 @@ async def reinitialize_system():
         
         if result.returncode != 0:
             logger.error(f"Setup command failed: {result.stderr}")
+            logger.error(f"Setup stdout: {result.stdout}")
             raise HTTPException(
                 status_code=500, 
                 detail=f"Failed to regenerate embeddings: {result.stderr}"
             )
         
+        logger.info(f"Setup completed successfully. Output: {result.stdout}")
+        
         logger.info("Embeddings regenerated successfully, now reinitializing assistant...")
         
-        # Then reinitialize the assistant
-        if not assistant:
-            from main import CommissionAIAssistant
-            assistant = CommissionAIAssistant()
+        # Create a fresh assistant instance to avoid cached data
+        from main import CommissionAIAssistant
+        assistant = CommissionAIAssistant()
         
+        # Initialize without jsonl file since setup already processed everything
         success = assistant.initialize_system()
+        
+        # Check new embedding count after update
+        if success and assistant.embedding_manager:
+            try:
+                new_count = assistant.embedding_manager.collection.count()
+                logger.info(f"New embedding count after update: {new_count}")
+            except:
+                logger.info("Could not get new embedding count")
         
         if success:
             return {"success": True, "message": "RAG data updated and system reinitialized successfully"}
